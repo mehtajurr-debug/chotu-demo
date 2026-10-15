@@ -1,5 +1,8 @@
 # Chotu: 3-minute demo script
 
+## Practising every workflow
+The presenter panel starts with a **Guided tour** (17 workflows: setup, reminders, safety, health check-in, privacy, dashboard, summary, live voice). Pick one, click **Start this workflow** (it sets the clock, elder and caregiver for you) and tick the steps as you go. **Next workflow** moves on. Use it to rehearse; on stage, follow the script below.
+
 ## Before you go on stage
 1. Double-click **start-demo.bat** in the `chotu-demo` folder. Chrome opens Chotu after a few seconds. Keep the black window open; closing it stops the demo.
 2. Make the browser window full screen (F11). You should see both phones side by side, with the presenter panel on the right.

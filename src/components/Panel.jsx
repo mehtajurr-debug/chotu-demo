@@ -7,6 +7,7 @@ import { enTime } from '../lib/time.js';
 import { UTTERANCES, clipCount, sayAsElder, soundUnlocked } from '../lib/voice.js';
 import { disableMic, enableMic, voiceStatus } from '../lib/mic.js';
 import { useEffect, useState } from 'react';
+import { TOUR } from '../data/tour.js';
 
 const GROUPS = [
   { title: 'Answering the reminder', keys: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent'] },
@@ -125,6 +126,45 @@ function upcoming(state, meds) {
   return out;
 }
 
+/** Guided tour: pick a workflow, start it from the right moment, follow the steps. */
+function Tour() {
+  const { dispatch } = useStore();
+  const saved = (() => { try { return localStorage.getItem('chotu-tour') || TOUR[0].id; } catch { return TOUR[0].id; } })();
+  const [id, setId] = useState(saved);
+  const [done, setDone] = useState([]);
+  const w = TOUR.find((x) => x.id === id) || TOUR[0];
+  const groups = [...new Set(TOUR.map((x) => x.group))];
+  const choose = (v) => { setId(v); setDone([]); try { localStorage.setItem('chotu-tour', v); } catch { /* not saved */ } };
+  const start = () => { setDone([]); dispatch({ type: 'demo/setup', setup: w.setup }); };
+  const idx = TOUR.indexOf(w);
+  return (
+    <div className="tour">
+      <h2>Guided tour · {idx + 1} of {TOUR.length}</h2>
+      <select id="tour-pick" className="tour-pick" value={w.id} onChange={(e) => choose(e.target.value)} aria-label="Choose a workflow">
+        {groups.map((g) => (
+          <optgroup key={g} label={g}>
+            {TOUR.filter((x) => x.group === g).map((x) => <option key={x.id} value={x.id}>{TOUR.indexOf(x) + 1}. {x.title}</option>)}
+          </optgroup>
+        ))}
+      </select>
+      <div className="row-btns">
+        <button className="btn pri" type="button" onClick={start}>Start this workflow</button>
+        <button className="btn" type="button" disabled={idx === TOUR.length - 1} onClick={() => choose(TOUR[idx + 1].id)}>Next workflow</button>
+      </div>
+      <ol className="tour-steps">
+        {w.steps.map((step, i) => (
+          <li key={i} className={done.includes(i) ? 'done' : ''}>
+            <label>
+              <input type="checkbox" checked={done.includes(i)} onChange={() => setDone((d) => (d.includes(i) ? d.filter((x) => x !== i) : [...d, i]))} />
+              <span>{step}</span>
+            </label>
+          </li>
+        ))}
+      </ol>
+    </div>
+  );
+}
+
 export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
   const { state, dispatch } = useStore();
   const meds = useMeds();
@@ -134,6 +174,7 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
 
   return (
     <aside className="panel" aria-label="Presenter controls">
+      <Tour />
       <div>
         <h2>Presenter</h2>
         <button className="btn pri" type="button" disabled={!next || phase !== 'idle'} style={{ width: '100%' }}

@@ -282,3 +282,20 @@ button { font-family: inherit; }
 .habit-grid td.ok { background: #D9F0E3; color: #17633F; }
 .habit-grid td.warn { background: #FCEBC8; color: #7A4A00; }
 .habit-grid td.bad { background: #F9DEDC; color: #8E1B16; }
+
+/* Guided tour in the presenter panel */
+.tour { display: flex; flex-direction: column; gap: 8px; border: 1.5px solid var(--accent); border-radius: 16px; padding: 12px; background: var(--soft); }
+.tour h2 { margin: 0; }
+.tour-pick { font: inherit; font-size: 14.5px; font-weight: 700; min-height: 44px; border-radius: 12px; border: 1.5px solid var(--line); padding: 6px 10px; background: var(--surface); color: var(--ink); width: 100%; }
+.row-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.row-btns .btn { font-size: 13.5px; padding: 6px 8px; }
+.tour-steps { margin: 0; padding-left: 0; list-style: none; display: flex; flex-direction: column; gap: 6px; counter-reset: step; }
+.tour-steps li { counter-increment: step; font-size: 13.5px; line-height: 1.45; }
+.tour-steps label { display: flex; gap: 8px; align-items: flex-start; cursor: pointer; }
+.tour-steps input { width: 18px; height: 18px; margin-top: 1px; flex-shrink: 0; accent-color: var(--accent); }
+.tour-steps li.done span { color: var(--sub); text-decoration: line-through; }
+
+/* Wide screens: the panel scrolls by itself so the phones stay in view */
+@media (min-width: 1241px) {
+  .panel { position: sticky; top: 16px; max-height: calc(100vh - 140px); overflow-y: auto; scrollbar-width: thin; }
+}

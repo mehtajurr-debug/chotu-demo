@@ -168,5 +168,10 @@
     "file": "audio/checkin_thanks.wav",
     "text": "ধন্যবাদ, আপনার কথা লিখে রাখলাম।",
     "when": "After a check-in answer"
+  },
+  "sos_too_soon": {
+    "file": "audio/sos_too_soon.wav",
+    "text": "এই ওষুধ আগের বার খাওয়ার অল্প সময় পরেই নেওয়া হচ্ছে। আমি আপনার পরিবারকে জানিয়ে দিচ্ছি।",
+    "when": "As-needed dose logged but gap/daily max exceeded"
   }
 }

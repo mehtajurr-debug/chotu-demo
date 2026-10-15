@@ -1,7 +1,8 @@
 // One shared state for both phones. Saved to localStorage so a page refresh keeps the demo where it was.
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { makeSeed } from '../data/seed.js';
-import { medMap, prnCheck } from '../lib/schedule.js';
+import { dosesForDay, medMap, prnCheck } from '../lib/schedule.js';
+import { checkinAt, checkinKey } from '../lib/checkin.js';
 import { bn, bnTime } from '../lib/time.js';
 import { raiseAlert, runEscalation } from './escalation.js';
 
@@ -174,6 +175,29 @@ function reducer(state, action) {
 
     case 'regimen/discard':
       return updateElder(state, action.elderId, (e) => ({ ...e, regimens: e.regimens.filter((r) => r.id !== action.regimenId) }));
+    // Guided tour: start from the sample data at a chosen moment. Doses before that moment are marked as
+    // taken (so nothing old raises alerts), and today's check-in can be pre-filled.
+    case 'demo/setup': {
+      const o = action.setup || {};
+      let s = { ...makeSeed(), epoch: Date.now() };
+      s.clock = o.clock ?? s.clock;
+      s.elderOnPhone = o.elder ?? s.elderOnPhone;
+      s.caregiverOnPhone = o.caregiver ?? s.caregiverOnPhone;
+      if (o.unreachable) s.unreachable = { ...s.unreachable, [o.unreachable]: true };
+      const meds = medMap(s);
+      const doses = { ...s.doses };
+      const day = Math.floor(s.clock / (24 * 60));
+      for (const elder of s.elders) {
+        for (const d of dosesForDay(elder, day, meds)) {
+          if (d.at < s.clock && !doses[d.key]) doses[d.key] = { status: 'taken', at: d.at + 3, how: 'voice', by: elder.id };
+        }
+        if (o.checkinDone && s.clock > checkinAt(elder, day)) {
+          s.checkins = { ...s.checkins, [checkinKey(elder.id, day)]: { at: checkinAt(elder, day) + 4, how: 'voice', answers: { feeling: 'good', walk: true, water: true, sleep: true }, said: {} } };
+        }
+      }
+      return { ...s, doses };
+    }
+
     case 'reset':
       return { ...makeSeed(), epoch: Date.now() }; // a new epoch tells the phones to drop what they were doing
     default:
