@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useCaregiver, useMeds, useStore } from '../state/store.jsx';
 import { bn, bnTime, bnWhen, dayOf, hhmmToMin } from '../lib/time.js';
-import { MEAL_TIMING, durationText, medImage, slotTime } from '../lib/schedule.js';
+import { MEAL_TIMING, durationText, medImage, prnCheck, slotTime } from '../lib/schedule.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import Icon from '../components/Icon.jsx';
 import { STATUS_LOOK, alertLabel, todayDoses } from './status.js';
@@ -70,11 +70,15 @@ export default function ElderDay({ elderId, onBack, toast, go, openAlert }) {
 
 // ---------- আজ ----------
 function Today({ elder, openAlert }) {
-  const { state } = useStore();
+  const { state, dispatch } = useStore();
+  const me = useCaregiver();
   const meds = useMeds();
+  const give = (d) => dispatch({ type: 'dose/given', elderId: elder.id, key: d.key, by: me.id, medName: d.med.short });
+  const prn = elder.regimens.filter((r) => r.asNeeded && r.status === 'active')
+    .map((r) => ({ r, m: meds[r.medId], chk: prnCheck(r, state.doses, state.clock) }));
   const now = state.clock;
   const today = todayDoses(elder, now, meds, state.doses);
-  const done = today.filter((d) => d.status === 'taken').length;
+  const done = today.filter((d) => d.status === 'taken' || d.status === 'conflict').length; // a conflict was still taken at least once
   const open = state.alerts.filter((a) => a.elderId === elder.id && !a.resolvedAt);
   // Newest first; for the same minute, the one written later comes first.
   const log = state.log.map((l, i) => ({ ...l, i })).filter((l) => l.elderId === elder.id).sort((a, b) => b.at - a.at || b.i - a.i);
@@ -104,22 +108,60 @@ function Today({ elder, openAlert }) {
         {today.length === 0 && <div className="t-sub">আজ কোনো নির্ধারিত ওষুধ নেই</div>}
         {today.map((d) => {
           const look = STATUS_LOOK[d.status];
+          const canGive = d.at <= now && d.status !== 'conflict';
           return (
-            <div key={d.key} className="row" style={{ gap: 10 }}>
-              <MedThumb src={medImage(d.regimen, d.med)} alt="" size={50} />
-              <div className="grow">
-                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{d.med.short}</div>
-                <div className="t-sub" style={{ fontSize: 14.5 }}>
-                  {bnTime(d.at)}{d.status === 'taken' ? ` · খেয়েছেন ${bnTime(d.rec.at)}` : ''}
+            <div key={d.key} style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+              <div className="row" style={{ gap: 10 }}>
+                <MedThumb src={medImage(d.regimen, d.med)} alt="" size={50} />
+                <div className="grow">
+                  <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{d.med.short}</div>
+                  <div className="t-sub" style={{ fontSize: 14.5 }}>
+                    {bnTime(d.at)}{d.status === 'taken' ? ` · ${d.rec.how === 'caregiver' ? `${who(d.rec.by)} খাইয়েছেন` : 'খেয়েছেন'} ${bnTime(d.rec.at)}` : ''}
+                  </div>
                 </div>
+                <span className="pill" style={{ ...PILL_COLOURS[look.cls], fontSize: 13.5 }}>
+                  <Icon name={look.icon} size={15} /> {look.label}
+                </span>
               </div>
-              <span className="pill" style={{ ...PILL_COLOURS[look.cls], fontSize: 13.5 }}>
-                <Icon name={look.icon} size={15} /> {look.label}
-              </span>
+              {d.status === 'conflict' && (
+                <div className="note-box warn" style={{ fontSize: 14.5 }}>
+                  একই ডোজ দুইবার লেখা হয়েছে, মিলিয়ে দেখুন:
+                  {d.rec.conflict.map((c, i) => (
+                    <span key={i} style={{ display: 'block', fontWeight: 700 }}>
+                      {bn(i + 1)}. {who(c.by)}{c.how === 'caregiver' ? ' (খাইয়ে দিয়েছেন)' : c.how === 'voice' ? ' (কথায় বলেছেন)' : ' (বোতামে)'} · {bnTime(c.at)}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {canGive && (
+                <button type="button" className="give-btn" onClick={() => give(d)}>
+                  <Icon name="check" size={16} /> আমি খাইয়ে দিয়েছি, লিখে রাখুন
+                </button>
+              )}
             </div>
           );
         })}
       </div>
+
+      {prn.length > 0 && (
+        <div className="card">
+          <div style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>প্রয়োজনের ওষুধ</div>
+          {prn.map(({ r, m, chk }) => (
+            <div key={r.id} className="row" style={{ gap: 10 }}>
+              <MedThumb src={medImage(r, m)} alt="" size={50} />
+              <div className="grow">
+                <div style={{ fontSize: 18, fontWeight: 700, lineHeight: 1.3 }}>{m.short}</div>
+                <div className="t-sub" style={{ fontSize: 14.5 }}>
+                  আজ {bn(chk.today)} বার{chk.last != null ? ` · শেষ ${bnWhen(chk.last, now)}` : ''}
+                </div>
+                <div className="t-sub" style={{ fontSize: 13.5 }}>
+                  নিয়ম: কমপক্ষে {bn(r.minGapHours)} ঘণ্টা পরপর, দিনে সর্বোচ্চ {bn(r.maxPerDay)} বার
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <div className="card">
         <div style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>কী কী হয়েছে</div>

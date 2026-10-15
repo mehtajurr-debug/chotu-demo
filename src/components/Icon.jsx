@@ -14,6 +14,8 @@ const PATHS = {
   speaker: 'M4 10v4h4l5 4V6L8 10H4zM16 9a4 4 0 010 6',
   mic: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v3',
   forward: 'M5 5l7 7-7 7M13 5l7 7-7 7',
+  x: 'M6 6l12 12M18 6L6 18',
+  shield: 'M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3zM9 12l2 2 4-4',
 };
 
 export default function Icon({ name, size = 22, color = 'currentColor', width = 2.4 }) {

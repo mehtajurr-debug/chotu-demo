@@ -75,6 +75,7 @@ export function AlertDetail({ id, onBack, toast }) {
   const a = state.alerts.find((x) => x.id === id);
   if (!a) return null;
   const elder = state.elders.find((e) => e.id === a.elderId);
+  if (a.kind === 'emergency') return <EmergencyDetail a={a} elder={elder} onBack={onBack} toast={toast} />;
   const nameOf = (cid) => state.caregivers.find((c) => c.id === cid)?.name;
   const told = recipients(state, a);
   const mine = a.handledBy === me.id;
@@ -153,6 +154,53 @@ export function AlertDetail({ id, onBack, toast }) {
         <button type="button" className="btn-wide ghost" onClick={() => toast('ফোন করা হচ্ছে… (ডেমো, আসলে কল হয় না)')}>
           <Icon name="phone" size={21} /> {elder.name}কে ফোন করুন
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Emergency: a full red screen with the elder's photo and name, Call 999, call the elder, and "আমি দেখছি". */
+function EmergencyDetail({ a, elder, onBack, toast }) {
+  const { state, dispatch } = useStore();
+  const me = useCaregiver();
+  const told = recipients(state, a);
+  const nameOf = (cid) => state.caregivers.find((c) => c.id === cid)?.name;
+  const mine = a.handledBy === me.id;
+  return (
+    <div className="scr" style={{ background: '#8E1B16', color: '#fff' }}>
+      <div className="row" style={{ flexShrink: 0 }}>
+        <button type="button" className="icon-btn" aria-label="ফিরে যান" onClick={onBack}>
+          <Icon name="back" size={28} color="#fff" />
+        </button>
+        <Icon name="alert" size={26} color="#fff" />
+        <div className="grow" style={{ fontSize: 24, fontWeight: 700 }}>জরুরি বার্তা</div>
+      </div>
+      <div className="body" style={{ gap: 14, alignItems: 'center', textAlign: 'center' }}>
+        <img className="av" src={elder.photo} alt="" width="120" height="120" style={{ width: 120, height: 120, border: '4px solid #fff', marginTop: 8 }} />
+        <div style={{ fontSize: 30, fontWeight: 700, lineHeight: 1.3 }}>{a.text}</div>
+        <div style={{ fontSize: 17, color: '#FFE3E0' }}>{bnWhen(a.createdAt, state.clock)}</div>
+        <div className="sent-card" style={{ width: '100%', textAlign: 'left', fontSize: 16.5 }}>
+          পরিবারের সবাইকে একসঙ্গে জানানো হয়েছে ({told.map(nameOf).join(', ')})।
+          {a.handledBy && <b style={{ display: 'block', marginTop: 6 }}>{nameOf(a.handledBy)} দেখছেন ({bnTime(a.handledAt)})</b>}
+        </div>
+      </div>
+      <div className="foot">
+        <button type="button" className="sent-btn" onClick={() => toast('ডেমো: আসল অ্যাপে এখানে ৯৯৯-এ কল হবে')}>
+          <Icon name="phone" size={26} /> ৯৯৯-এ ফোন করুন
+        </button>
+        <button type="button" className="sent-btn ghost" onClick={() => toast('ফোন করা হচ্ছে… (ডেমো, আসলে কল হয় না)')}>
+          <Icon name="phone" size={24} /> {elder.name}কে ফোন করুন
+        </button>
+        {!a.handledBy && !a.resolvedAt && (
+          <button type="button" className="sent-btn ghost" onClick={() => { dispatch({ type: 'alert/handle', id: a.id, by: me.id }); toast('অন্যদের জানানো হলো: আপনি দেখছেন'); }}>
+            <Icon name="check" size={24} /> আমি দেখছি
+          </button>
+        )}
+        {mine && !a.resolvedAt && (
+          <button type="button" className="sent-btn ghost" onClick={() => { dispatch({ type: 'alert/resolve', id: a.id, by: me.id }); onBack(); }}>
+            সমাধান হয়েছে
+          </button>
+        )}
       </div>
     </div>
   );

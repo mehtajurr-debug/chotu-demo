@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
 import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
-import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, reminderLevel } from '../lib/schedule.js';
+import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel } from '../lib/schedule.js';
 import { lineText, onElderSays, speak } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
@@ -31,7 +31,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const dueKey = due.map((d) => d.key).join('|');
   const offline = Boolean(state.unreachable?.[elder.id]); // presenter toggle: this phone can't be reached
 
-  const [phase, setPhase] = useState('idle'); // idle | speak | listen | readback | logged | buttons | done
+  const [phase, setPhase] = useState('idle'); // idle | speak | listen | readback | logged | buttons | done | countdown | sent
+  const [count, setCount] = useState(5); // emergency countdown
   const [caption, setCaption] = useState('');
   const [heard, setHeard] = useState('');
   const [undoOn, setUndoOn] = useState(false); // the 5-second 'say না to undo' bar is running
@@ -134,7 +135,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
 
   function micSilence(context) {
     const p = phaseRef.current;
-    if (context === 'undo') return; // no "না" in time: the dose gets logged as planned
+    if (context === 'undo' || context === 'cancel') return; // nothing said in time: carry on as planned
     if (p === 'buttons') return micListen('reminder'); // keep listening while the buttons are up
     noAnswer();
   }
@@ -217,12 +218,74 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
     say('ack_help', () => finish(4000));
   }
 
+  // ----- emergency: big button (or "জরুরি", "বাঁচাও" while listening) -> 5-second countdown -> everyone told -----
+  function startEmergency(how) {
+    if (['countdown', 'sent'].includes(phaseRef.current)) return;
+    clearAll();
+    setUndoOn(false);
+    setHeard('');
+    go('countdown');
+    setCount(5);
+    say('emergency_countdown');
+    if (latest.current.micOn) micListen('cancel'); // "বাতিল" cancels
+    let n = 5;
+    const tick = () => {
+      n -= 1;
+      setCount(n);
+      if (n <= 0) sendEmergency(how); else later(tick, 1000);
+    };
+    later(tick, 1000);
+  }
+
+  function cancelEmergency(how) {
+    clearAll();
+    const el = latest.current.elder;
+    dispatch({ type: 'log/add', entry: { elderId: el.id, by: el.id, kind: 'emergency', text: `জরুরি বার্তা বাতিল করেছেন (${how === 'voice' ? '“বাতিল” বলেছেন' : 'বোতামে'})` } });
+    go('speak');
+    latest.current.active = [];
+    setActive([]);
+    say('emergency_cancelled', () => finish(2000));
+  }
+
+  function sendEmergency(how) {
+    clearAll();
+    dispatch({ type: 'emergency/send', elderId: latest.current.elder.id, how });
+    go('sent');
+    say('emergency_sent');
+  }
+
+  // When someone takes the emergency, tell the elder (the "sent" screen also shows who).
+  const emergencyAlert = state.alerts.filter((a) => a.elderId === elder.id && a.kind === 'emergency' && !a.resolvedAt).at(-1);
+  useEffect(() => {
+    if (phase !== 'sent' || !emergencyAlert?.handledBy || emergencyAlert.handlingTold) return;
+    dispatch({ type: 'alert/told', id: emergencyAlert.id, field: 'handlingTold' });
+    say('family_handling');
+  }, [phase, emergencyAlert?.handledBy]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // ----- as-needed medicine: the elder taps "এখন খেলাম"; always logged, limits checked -----
+  function takePrn(r) {
+    if (phaseRef.current !== 'idle') return;
+    const med = meds[r.medId];
+    const chk = prnCheck(r, state.doses, state.clock);
+    dispatch({ type: 'prn/log', elderId: elder.id, regimenId: r.id, medName: med.short, how: 'button' });
+    const item = [{ key: `prn-${r.id}`, regimen: r, med }];
+    latest.current.active = item;
+    setActive(item);
+    go('speak');
+    say(chk.tooSoon || chk.overMax ? 'sos_too_soon' : 'sos_logged', () => finish(3000));
+  }
+
   // ----- what the elder says: from the live microphone, or simulated from the presenter panel -----
   useEffect(() => onElderSays(handleAnswer));
 
   function handleAnswer(u) {
     const p = phaseRef.current;
+    if (p === 'countdown') {
+      if (u.intent === 'cancel' || u.intent === 'no') cancelEmergency('voice');
+      return;
+    }
     if (!['listen', 'readback', 'logged', 'buttons'].includes(p)) return;
+    if (u.intent === 'emergency') return startEmergency('voice'); // "জরুরি", "বাঁচাও" while listening
 
     if (p === 'logged') {
       if (u.intent !== 'no') return; // only "না" matters during the undo window
@@ -252,17 +315,18 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
       if (u.intent === 'forgot') return forgot('voice');
       if (u.intent === 'help') return help('voice');
       if (u.intent === 'pain') return help('voice', `ব্যথা বা অসুস্থতার কথা বলেছেন: “${u.text}”`);
-      if (u.intent === 'emergency') return help('voice', `জরুরি কথা বলেছেন: “${u.text}”`); // Stage 6: countdown
       // Anything else ("other", "cancel"): not understood. Never blame; ask again.
       if (p === 'buttons') { if (latest.current.micOn) micListen('reminder'); return; }
       noAnswer();
     });
   }
 
-  const emergency = () => toast('জরুরি বোতাম Stage 6-এ চালু হবে');
+  const emergency = () => startEmergency('button');
 
   if (offline) return <Offline elder={elder} />;
-  if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} />;
+  if (phase === 'countdown') return <Countdown n={count} onCancel={() => cancelEmergency('button')} />;
+  if (phase === 'sent') return <Sent elder={elder} alert={emergencyAlert} toast={toast} onBack={() => { clearAll(); go('idle'); }} />;
+  if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} />;
 
   const listening = ['listen', 'readback', 'logged', 'buttons'].includes(phase);
   const showButtons = phase === 'buttons';
@@ -344,6 +408,70 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   );
 }
 
+/** 5-second emergency countdown with a very large Cancel (from the prototype). */
+function Countdown({ n, onCancel }) {
+  return (
+    <div className="scr" style={{ background: '#8E1B16', color: '#fff' }}>
+      <div className="row" style={{ justifyContent: 'center', marginTop: 8 }}>
+        <Icon name="alert" size={30} color="#fff" width={2.2} />
+        <div style={{ fontSize: 24, fontWeight: 700 }}>জরুরি অবস্থা</div>
+      </div>
+      <div className="count-ring" aria-live="assertive">{n > 0 ? toBn(n) : '০'}</div>
+      <div style={{ fontSize: 30, fontWeight: 700, textAlign: 'center', marginTop: 12 }}>জরুরি বার্তা পাঠানো হচ্ছে</div>
+      <div style={{ fontSize: 20, fontWeight: 500, color: '#FFE3E0', textAlign: 'center', lineHeight: 1.5, padding: '0 8px' }}>
+        আপনার পরিবারের সবাইকে জানানো হবে। ভুল হলে বলুন “বাতিল”, অথবা নিচে চাপুন।
+      </div>
+      <button type="button" className="cancel-big" onClick={onCancel}>
+        <Icon name="x" size={43} /> বাতিল করুন
+      </button>
+    </div>
+  );
+}
+
+/** After the countdown: calm message, who has been told, call buttons. */
+function Sent({ elder, alert, toast, onBack }) {
+  const { state } = useStore();
+  const people = elder.alertOrder.map((id) => state.caregivers.find((c) => c.id === id)).filter(Boolean);
+  const first = people[0];
+  return (
+    <div className="scr" style={{ background: '#8E1B16', color: '#fff', gap: 14 }}>
+      <div className="row" style={{ marginTop: 8 }}>
+        <Icon name="shield" size={30} color="#fff" width={2.2} />
+        <div style={{ fontSize: 24, fontWeight: 700 }}>জরুরি বার্তা পাঠানো হয়েছে</div>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 600, lineHeight: 1.45 }}>শান্ত থাকুন, {elder.name}। আপনার পরিবারের সবাইকে জানানো হয়েছে।</div>
+      <div className="sent-card">
+        {people.map((p, i) => (
+          <div key={p.id}>
+            {i > 0 && <div style={{ height: 1, background: 'rgba(255,255,255,.25)', margin: '0 0 12px' }} />}
+            <div className="row" style={{ gap: 12 }}>
+              <Avatar person={p} size={54} />
+              <div className="grow">
+                <div style={{ fontSize: 22, fontWeight: 700 }}>{p.name}</div>
+                <div style={{ fontSize: 16, color: '#FFE3E0' }}>{alert?.handledBy === p.id ? 'জানানো হয়েছে · আসছেন / ফোন করছেন' : 'জানানো হয়েছে'}</div>
+              </div>
+              <Icon name="check" size={26} color="#fff" width={2.6} />
+            </div>
+          </div>
+        ))}
+      </div>
+      <button type="button" className="sent-btn" onClick={() => toast('ডেমো: আসল অ্যাপে এখানে ৯৯৯-এ কল হবে')}>
+        <Icon name="phone" size={26} /> ৯৯৯-এ ফোন করুন
+      </button>
+      {first && (
+        <button type="button" className="sent-btn ghost" onClick={() => toast('ফোন করা হচ্ছে… (ডেমো, আসলে কল হয় না)')}>
+          <Icon name="phone" size={24} /> {first.name}কে ফোন করুন
+        </button>
+      )}
+      <button type="button" onClick={onBack} style={{ marginTop: 'auto', background: 'none', border: 0, color: '#FFE3E0', fontSize: 17, fontWeight: 600, cursor: 'pointer', minHeight: 44 }}>
+        মূল পাতায় ফিরুন
+      </button>
+    </div>
+  );
+}
+
+const toBn = (n) => String(n).replace(/\d/g, (d) => '০১২৩৪৫৬৭৮৯'[d]);
+
 /** Presenter toggle "phone unreachable": nothing reaches this phone. */
 function Offline({ elder }) {
   return (
@@ -357,11 +485,12 @@ function Offline({ elder }) {
 }
 
 /** Resting screen: greeting, Chotu's face, next medicine. */
-function Idle({ elder, now, meds, doses, onEmergency }) {
+function Idle({ elder, now, meds, doses, onEmergency, onPrn }) {
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
-  const compact = group.length > 1;
+  const prn = elder.regimens.filter((r) => r.asNeeded && r.status === 'active');
+  const compact = group.length > 1 || prn.length > 0;
   const face = compact ? 150 : 176;
 
   return (
@@ -381,7 +510,7 @@ function Idle({ elder, now, meds, doses, onEmergency }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: compact ? 40 : 52, marginBottom: compact ? 30 : 40 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: compact ? 30 : 52, marginBottom: compact ? 20 : 40 }}>
         <div className="face" style={{ width: face, height: face }}>
           <div className="ring" style={{ inset: -24 }} />
           <div className="ring" style={{ inset: -48, animationDelay: '.6s' }} />
@@ -389,8 +518,21 @@ function Idle({ elder, now, meds, doses, onEmergency }) {
         </div>
       </div>
 
+      {prn.map((r) => (
+        <div key={r.id} className="card" style={{ padding: 10, marginTop: 'auto' }}>
+          <div className="row" style={{ gap: 12 }}>
+            <MedThumb src={medImage(r, meds[r.medId])} alt={meds[r.medId]?.name} size={56} />
+            <div className="grow">
+              <div className="t-label">প্রয়োজনের ওষুধ</div>
+              <div style={{ fontSize: 19, fontWeight: 700 }}>{meds[r.medId]?.short}</div>
+            </div>
+            <button type="button" className="answer" style={{ minHeight: 56, fontSize: 18 }} onClick={() => onPrn(r)}>এখন খেলাম</button>
+          </div>
+        </div>
+      ))}
+
       {next && (
-        <div className="card" style={{ marginTop: 'auto' }}>
+        <div className="card" style={prn.length ? undefined : { marginTop: 'auto' }}>
           <div className="row">
             <div className="t-label grow" style={{ fontSize: 16 }}>পরের ওষুধ{tomorrow ? ' · আগামীকাল' : ''}</div>
             <div style={{ fontSize: 19, fontWeight: 700, color: '#0B2F8A' }}>{bnTime(next.at)}</div>

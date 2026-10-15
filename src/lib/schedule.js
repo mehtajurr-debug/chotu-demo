@@ -102,6 +102,7 @@ export function dueGroup(elder, now, meds, doses) {
 /** Status of one scheduled dose for the caregiver: upcoming | due | snoozed | taken | unsure | help */
 export function doseStatus(dose, now, doses) {
   const rec = doses[dose.key];
+  if (rec?.conflict) return 'conflict'; // two people logged the same dose
   if (rec) return rec.status === 'snoozed' && rec.until <= now ? 'due' : rec.status;
   return dose.at <= now ? 'due' : 'upcoming';
 }
@@ -134,4 +135,19 @@ export function nextDose(elder, now, meds) {
     if (hit) return hit;
   }
   return null;
+}
+
+// ---------- as-needed ("প্রয়োজন হলে") medicines ----------
+
+/** Check an as-needed dose against the limits the caregiver set: minimum hours between doses, maximum per day. */
+export function prnCheck(regimen, doses, now) {
+  const last = lastTaken(regimen.id, doses);
+  const prefix = `${regimen.id}@${dayOf(now)}@`;
+  const today = Object.entries(doses).filter(([k, r]) => k.startsWith(prefix) && r.status === 'taken').length;
+  const gapMin = last == null ? null : now - last;
+  return {
+    last, today, gapMin,
+    tooSoon: gapMin != null && gapMin < regimen.minGapHours * 60,
+    overMax: today + 1 > regimen.maxPerDay,
+  };
 }

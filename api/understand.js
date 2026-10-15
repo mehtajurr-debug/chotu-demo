@@ -38,6 +38,7 @@ const CONTEXTS = {
   reminder: '“It is time for your medicine. Did you take it?”',
   readback: '“Did you say you took the medicine? Say yes or no.”',
   undo: '“Noted that you took it. Say no if that is wrong.” (5-second undo window)',
+  cancel: '“Sending an emergency alert to your family in 5 seconds. Say cancel (বাতিল) if it was a mistake.”',
 };
 
 const SCHEMA = {

@@ -32,7 +32,7 @@ function useFitScale() {
 
 const ELDER_LABEL = {
   idle: 'waiting', speak: 'Chotu is speaking', listen: 'listening', readback: 'reading back', logged: 'logged, 5 s to undo',
-  buttons: 'buttons shown', done: 'done',
+  buttons: 'buttons shown', done: 'done', countdown: 'emergency countdown', sent: 'emergency sent',
 };
 
 export default function App() {

@@ -1,7 +1,8 @@
 // One shared state for both phones. Saved to localStorage so a page refresh keeps the demo where it was.
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { makeSeed } from '../data/seed.js';
-import { medMap } from '../lib/schedule.js';
+import { medMap, prnCheck } from '../lib/schedule.js';
+import { bn, bnTime } from '../lib/time.js';
 import { raiseAlert, runEscalation } from './escalation.js';
 
 const KEY = 'chotu-demo-state';
@@ -62,11 +63,56 @@ function reducer(state, action) {
     case 'dose/record': {
       const doses = { ...state.doses };
       const until = action.untilIn ? state.clock + action.untilIn : undefined; // "not yet": ask again later
-      for (const k of action.keys) doses[k] = { status: action.status, at: state.clock, how: action.how, until };
+      for (const k of action.keys) doses[k] = { status: action.status, at: state.clock, how: action.how, by: action.elderId, until };
       let s = logEntry({ ...state, doses }, { elderId: action.elderId, by: action.elderId, kind: 'dose', status: action.status, text: action.text });
       // "মনে নেই" and "help" alert the family. Help goes to everyone at once.
       if (action.alert) s = raiseAlert(s, { elderId: action.elderId, kind: action.status, at: state.clock, text: action.alert, doseKeys: action.keys, ladder: action.status !== 'help' });
       return s;
+    }
+
+    // A caregiver writes that they gave a dose. If someone already logged it, keep both and show a conflict.
+    case 'dose/given': {
+      const rec = state.doses[action.key];
+      const who = state.caregivers.find((x) => x.id === action.by)?.name;
+      const mine = { by: action.by, at: state.clock, how: 'caregiver' };
+      let next;
+      let text = `${action.medName}: ${who} লিখেছেন “খাইয়ে দিয়েছি”`;
+      if (rec?.status === 'taken') {
+        const first = rec.conflict ? rec.conflict : [{ by: rec.by || action.elderId, at: rec.at, how: rec.how }];
+        next = { ...rec, conflict: [...first, mine] };
+        text += '। একই ডোজ দুইবার লেখা হয়েছে, মিলিয়ে দেখুন';
+      } else {
+        next = { status: 'taken', ...mine };
+      }
+      return logEntry({ ...state, doses: { ...state.doses, [action.key]: next } }, { elderId: action.elderId, by: action.by, kind: 'dose', text });
+    }
+
+    // The elder takes an as-needed medicine. Always logged; if it breaks the family's limits, caregivers are alerted.
+    case 'prn/log': {
+      const elder = state.elders.find((e) => e.id === action.elderId);
+      const r = elder.regimens.find((x) => x.id === action.regimenId);
+      const chk = prnCheck(r, state.doses, state.clock);
+      const key = `${r.id}@${Math.floor(state.clock / (24 * 60))}@prn-${state.clock}`;
+      let s = { ...state, doses: { ...state.doses, [key]: { status: 'taken', at: state.clock, how: action.how, by: elder.id } } };
+      s = logEntry(s, { elderId: elder.id, by: elder.id, kind: 'dose', text: `${action.medName} খেয়েছেন (প্রয়োজনের ওষুধ, আজ ${bn(chk.today + 1)} বার)` });
+      const broken = [];
+      if (chk.tooSoon) {
+        const h = Math.floor(chk.gapMin / 60), m = chk.gapMin % 60;
+        broken.push(`আগের বার ${bnTime(chk.last)}, মাত্র ${h ? bn(h) + ' ঘণ্টা ' : ''}${bn(m)} মিনিট আগে (পরিবারের নিয়ম: কমপক্ষে ${bn(r.minGapHours)} ঘণ্টা পরপর)`);
+      }
+      if (chk.overMax) broken.push(`আজ এটি ${bn(chk.today + 1)} বার (পরিবারের নিয়ম: দিনে সর্বোচ্চ ${bn(r.maxPerDay)} বার)`);
+      if (broken.length) {
+        s = raiseAlert(s, { elderId: elder.id, kind: 'prn', at: state.clock, doseKeys: [key], text: `${elder.name} ${action.medName} নিয়েছেন। ${broken.join('। ')}।` });
+      }
+      return s;
+    }
+
+    // Emergency: after the 5-second countdown, everyone in the family is told at once.
+    case 'emergency/send': {
+      const elder = state.elders.find((e) => e.id === action.elderId);
+      const what = action.how === 'voice' ? 'জরুরি সাহায্য চেয়েছেন (কথায়)' : 'জরুরি বোতাম চেপেছেন';
+      const s = logEntry(state, { elderId: elder.id, by: elder.id, kind: 'emergency', text: what });
+      return raiseAlert(s, { elderId: elder.id, kind: 'emergency', at: state.clock, ladder: false, text: `${elder.name} ${what}।` });
     }
 
     // ----- alerts -----

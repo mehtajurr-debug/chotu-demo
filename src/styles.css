@@ -159,6 +159,13 @@ button { font-family: inherit; }
 .answer.yes { background: #17633F; border-color: #17633F; color: #fff; }
 .answer.small { min-height: 48px; font-size: 18px; color: #0B2F8A; }
 
+/* Emergency screens (from the prototype) */
+.count-ring { margin: 18px auto 0; width: 210px; height: 210px; border-radius: 50%; border: 10px solid #fff; display: flex; align-items: center; justify-content: center; font-size: 116px; font-weight: 700; line-height: 1; }
+.cancel-big { height: 120px; border-radius: 26px; background: #fff; color: #8E1B16; border: 2px solid #fff; display: flex; align-items: center; justify-content: center; gap: 10px; font: inherit; font-size: 38px; font-weight: 700; cursor: pointer; margin-top: auto; width: 100%; }
+.sent-card { background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.35); border-radius: 22px; padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+.sent-btn { min-height: 62px; border-radius: 22px; background: #fff; color: #8E1B16; border: 2px solid #fff; font: inherit; font-size: 22px; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 10px; cursor: pointer; }
+.sent-btn.ghost { background: transparent; color: #fff; }
+
 /* Caregiver bottom navigation */
 .nav { margin: auto -20px -24px; background: #fff; border-top: 1.5px solid #A9CCF2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 8px 18px; flex-shrink: 0; }
 .nav button { border: 0; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 6px; min-height: 52px; font-size: 13px; font-weight: 500; color: #425A80; }
@@ -246,3 +253,7 @@ button { font-family: inherit; }
 @media (prefers-reduced-motion: reduce) {
   .face .ring, .toast, .wave.on span, .banner { animation: none; }
 }
+
+/* "I gave it" button under each dose on the caregiver dashboard */
+.give-btn { align-self: flex-start; margin-left: 60px; border: 1.5px solid #A9CCF2; background: #fff; color: #0B2F8A; border-radius: 12px; padding: 4px 12px; min-height: 36px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.give-btn:hover { border-color: #5B9BE0; }

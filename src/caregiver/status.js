@@ -11,6 +11,7 @@ export const STATUS_LOOK = {
   unsure: { label: 'মনে নেই', cls: 'bad', icon: 'alert' },
   help: { label: 'সাহায্য চেয়েছেন', cls: 'bad', icon: 'alert' },
   missed: { label: 'উত্তর নেই', cls: 'bad', icon: 'alert' },
+  conflict: { label: 'দুইবার লেখা', cls: 'warn', icon: 'alert' },
 };
 
 /** Today's doses with their status. */
@@ -33,6 +34,7 @@ export function headline(elder, now, meds, doses, alerts = [], caregivers = []) 
   const names = (list) => [...new Set(list.map((d) => d.med.short))].join(' + ');
   const pick = (s) => today.filter((d) => d.status === s);
 
+  if (pick('conflict').length) return { cls: 'warn', icon: 'alert', text: `${names(pick('conflict'))}: দুইবার লেখা হয়েছে, মিলিয়ে দেখুন` };
   if (pick('due').length) return { cls: '', icon: 'clock', text: `এখন সময়: ${names(pick('due'))}` };
   if (pick('snoozed').length) return { cls: 'warn', icon: 'clock', text: `${names(pick('snoozed'))}: পরে খাবেন বলেছেন` };
   const taken = pick('taken').sort((a, b) => b.rec.at - a.rec.at);
@@ -50,6 +52,7 @@ export const ALERT_KIND = {
   unsure: 'ওষুধ খাওয়ার কথা মনে নেই',
   help: 'সাহায্য চেয়েছেন',
   emergency: 'জরুরি অবস্থা',
+  prn: 'প্রয়োজনের ওষুধের নিয়ম পার হয়েছে',
 };
 
 export const alertLabel = (a) => (a.kind === 'missed' && a.unreachable ? 'ফোনে যোগাযোগ নেই' : ALERT_KIND[a.kind]);

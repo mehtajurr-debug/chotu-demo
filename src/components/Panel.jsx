@@ -11,14 +11,16 @@ import { useEffect, useState } from 'react';
 const GROUPS = [
   { title: 'Answering the reminder', keys: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent'] },
   { title: 'Read-back and undo', keys: ['yes', 'no'] },
+  { title: 'Emergency (while listening)', keys: ['sos', 'cancel'] },
 ];
 
 // Which answers make sense in each phase of the elder phone.
 const ALLOWED = {
-  listen: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent'],
-  buttons: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear'],
-  readback: ['yes', 'no', 'silent'],
+  listen: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent', 'sos'],
+  buttons: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'sos'],
+  readback: ['yes', 'no', 'silent', 'sos'],
   logged: ['no'],
+  countdown: ['cancel'],
 };
 
 const NOW = {
@@ -29,6 +31,8 @@ const NOW = {
   logged: 'Logged. The elder has 5 seconds to say “না” to undo.',
   buttons: 'Two tries with no clear answer, so the big buttons appeared. Voice still works.',
   done: 'Done. Check the caregiver phone.',
+  countdown: 'Emergency countdown. Say “বাতিল” or tap the big Cancel within 5 seconds.',
+  sent: 'Emergency sent to everyone. Check the caregiver phone (Call 999 is demo only).',
 };
 
 const INTENT_EN = {

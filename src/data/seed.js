@@ -15,14 +15,14 @@ const YESTERDAY = [
 
 export function makeSeed() {
   return {
-    version: 6,
+    version: 7,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
 
     caregivers: [
       { id: 'shumon', name: 'শুমন', gen: 'শুমনের', nameEn: 'Shumon', relation: 'ছেলে', photo: '/img/shumon.png', primary: true },
-      { id: 'ruma', name: 'রুমা', gen: 'রুমার', nameEn: 'Ruma', relation: 'মেয়ে', photo: null, primary: false },
+      { id: 'ruma', name: 'রুমানা', gen: 'রুমানার', nameEn: 'Rumana', relation: 'মেয়ে', photo: null, primary: false },
     ],
 
     elders: [
@@ -60,10 +60,17 @@ export function makeSeed() {
 
     // One record per dose, keyed "regimenId@day@slot". status: taken | snoozed | unsure | help
     // Yesterday (day -1) is pre-filled so "last dose" has something real to show.
-    doses: Object.fromEntries(YESTERDAY.map(([key, , at]) => [key, { status: 'taken', at, how: 'voice' }])),
+    doses: {
+      ...Object.fromEntries(YESTERDAY.map(([key, elderId, at]) => [key, { status: 'taken', at, how: 'voice', by: elderId }])),
+      // Ma took her as-needed Napa Extra at 6:30 this morning (so another one at 8:00 breaks the 6-hour rule).
+      'm3@0@prn-390': { status: 'taken', at: 390, how: 'voice', by: 'ma' },
+    },
 
     // What happened, newest last. Each entry: { at, elderId, text, by, kind }
-    log: YESTERDAY.map(([, elderId, at, text]) => ({ at, elderId, by: elderId, kind: 'dose', text })),
+    log: [
+      ...YESTERDAY.map(([, elderId, at, text]) => ({ at, elderId, by: elderId, kind: 'dose', text })),
+      { at: 390, elderId: 'ma', by: 'ma', kind: 'dose', text: 'Napa Extra খেয়েছেন (প্রয়োজনের ওষুধ, আজ ১ বার)' },
+    ],
     // Medicines the caregiver typed in that are not in the library: { id, name, short, bn, strength, form, image }
     customMeds: [],
     // Alerts to caregivers (see src/state/escalation.js)

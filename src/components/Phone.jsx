@@ -25,12 +25,18 @@ export default function Phone({ label, status, hidden, children }) {
   );
 }
 
+// First Bangla letter including its vowel sign ("রুমানা" -> "রু"), not just the first code unit.
+const firstLetter = (() => {
+  try { const s = new Intl.Segmenter('bn', { granularity: 'grapheme' }); return (t) => s.segment(t)[Symbol.iterator]().next().value?.segment || ''; }
+  catch { return (t) => t.slice(0, 1); }
+})();
+
 /** Round photo, or initials when there is no photo. */
 export function Avatar({ person, size }) {
   if (person.photo) {
     return <img className="av" src={person.photo} alt="" width={size} height={size} style={{ width: size, height: size }} />;
   }
-  return <div className="av-init" style={{ width: size, height: size, fontSize: size * 0.42 }}>{person.name.slice(0, 1)}</div>;
+  return <div className="av-init" style={{ width: size, height: size, fontSize: size * 0.42 }}>{firstLetter(person.name)}</div>;
 }
 
 export function MedThumb({ src, alt = '', size }) {

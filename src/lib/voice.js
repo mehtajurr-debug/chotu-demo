@@ -68,6 +68,8 @@ export const UTTERANCES = {
   yes: { text: 'হ্যাঁ', intent: 'yes', en: 'Yes' },
   no: { text: 'না', intent: 'no', en: 'No' },
   silent: { text: '', intent: 'silent', en: 'Stays silent' },
+  sos: { text: 'বাঁচাও! জরুরি!', intent: 'emergency', en: 'Help! (starts the countdown)' },
+  cancel: { text: 'বাতিল', intent: 'cancel', en: 'Cancel the emergency' },
 };
 
 const bus = new EventTarget();
