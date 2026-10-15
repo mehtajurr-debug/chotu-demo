@@ -119,7 +119,7 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
         <h2>Presenter</h2>
         <button className="btn pri" type="button" disabled={!next || phase !== 'idle'} style={{ width: '100%' }}
           onClick={() => dispatch({ type: 'clock/advance', minutes: next.at - state.clock })}>
-          Next dose → {next ? `${next.med.short}, ${enTime(next.at)}` : 'none'}
+          {phase !== 'idle' ? 'Next dose (wait: Chotu is busy)' : `Next dose → ${next ? `${next.med.short}, ${enTime(next.at)}` : 'none'}`}
         </button>
         <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
           onClick={() => dispatch({ type: 'consent/show', elderId: elder.id })}>
@@ -136,6 +136,10 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
         <label className="toggle-row">
           <input type="checkbox" checked={Boolean(state.unreachable?.[elder.id])} onChange={() => dispatch({ type: 'elder/unreachable', elderId: elder.id })} />
           <span>{elder.nameEn}’s phone unreachable <small>(alert says “can’t reach”, not “missed”)</small></span>
+        </label>
+        <label className="toggle-row">
+          <input type="checkbox" checked={Boolean(state.othersAutoAnswer)} onChange={() => dispatch({ type: 'demo/othersAutoAnswer' })} />
+          <span>{state.elders.filter((e) => e.id !== elder.id).map((e) => e.nameEn).join(', ')} answers reminders on their own <small>(simulated, keeps their alerts out of the demo)</small></span>
         </label>
       </div>
 

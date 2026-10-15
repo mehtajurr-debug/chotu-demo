@@ -68,6 +68,21 @@ export function runEscalation(state) {
   const meds = medMap(state);
   let s = state;
 
+  // 0) Simulation: the elder not on the elder phone answers "খেয়েছি" 2 minutes after each dose time.
+  if (s.othersAutoAnswer) {
+    for (const elder of s.elders) {
+      if (elder.id === s.elderOnPhone) continue;
+      for (const day of [dayOf(now) - 1, dayOf(now)]) {
+        for (const d of dosesForDay(elder, day, meds)) {
+          if (s.doses[d.key] || d.at + 2 > now) continue;
+          if (d.regimen.verifiedAt != null && d.at < d.regimen.verifiedAt) continue;
+          s = { ...s, doses: { ...s.doses, [d.key]: { status: 'taken', at: d.at + 2, how: 'voice', by: elder.id } } };
+          s = logAt(s, d.at + 2, { elderId: elder.id, by: elder.id, kind: 'dose', text: `${d.med.short} খেয়েছেন (কথায় বলেছেন)` });
+        }
+      }
+    }
+  }
+
   // 1) Doses with no answer for 30 minutes -> missed, one alert per elder per dose time.
   for (const elder of s.elders) {
     const groups = new Map();

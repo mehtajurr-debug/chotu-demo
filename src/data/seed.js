@@ -15,7 +15,7 @@ const YESTERDAY = [
 
 export function makeSeed() {
   return {
-    version: 9,
+    version: 10,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -79,6 +79,9 @@ export function makeSeed() {
       ma: { medication: true, wellbeing: true, location: false, agreedAt: Y(9, 0) },
     },
     showConsentFor: null, // presenter opens the consent screen on an elder phone
+    // Presenter toggle: the elder NOT shown on the elder phone answers reminders by themselves (simulated),
+    // so their alerts do not clutter the story being presented.
+    othersAutoAnswer: true,
 
     // Alerts to caregivers (see src/state/escalation.js)
     alerts: [],

@@ -154,6 +154,8 @@ function reducer(state, action) {
       const s = { ...state, showConsentFor: null, consent: { ...state.consent, [action.elderId]: { ...c, agreedAt: state.clock } } };
       return logEntry(s, { elderId: action.elderId, by: action.elderId, kind: 'consent', text: `সম্মতি দিয়েছেন: ${on.length ? on.join(', ') : 'কিছুই শেয়ার নয়'} (সাহায্য ও জরুরি বার্তা সবসময় যাবে)` });
     }
+    case 'demo/othersAutoAnswer':
+      return { ...state, othersAutoAnswer: !state.othersAutoAnswer };
     case 'elder/unreachable':
       return { ...state, unreachable: { ...state.unreachable, [action.elderId]: !state.unreachable?.[action.elderId] } };
 
