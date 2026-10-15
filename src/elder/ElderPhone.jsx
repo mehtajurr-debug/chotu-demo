@@ -9,7 +9,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
 import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
 import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel } from '../lib/schedule.js';
-import { lineText, onElderSays, speak } from '../lib/voice.js';
+import { lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import Icon from '../components/Icon.jsx';
@@ -30,6 +30,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const due = dueGroup(elder, now, meds, state.doses);
   const dueKey = due.map((d) => d.key).join('|');
   const offline = Boolean(state.unreachable?.[elder.id]); // presenter toggle: this phone can't be reached
+  const consentOpen = state.showConsentFor === elder.id; // reminders wait while the elder is choosing
 
   const [phase, setPhase] = useState('idle'); // idle | speak | listen | readback | logged | buttons | done | countdown | sent
   const [count, setCount] = useState(5); // emergency countdown
@@ -64,11 +65,11 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const level = due.length ? reminderLevel(due, now, state.doses) : 0;
   const lastLevel = useRef(-1);
   useEffect(() => {
-    if (offline || !due.length) return;
+    if (offline || consentOpen || !due.length) return;
     // A newer repeat takes over, unless an answer is being logged right now.
     const waiting = phase === 'idle' || (level > lastLevel.current && ['speak', 'listen', 'readback', 'buttons'].includes(phase));
     if (waiting) startReminder(due, level);
-  }, [dueKey, phase, level, offline]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [dueKey, phase, level, offline, consentOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function startReminder(group, lvl) {
     clearAll();
@@ -324,6 +325,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const emergency = () => startEmergency('button');
 
   if (offline) return <Offline elder={elder} />;
+  if (state.showConsentFor === elder.id) return <Consent elder={elder} />;
   if (phase === 'countdown') return <Countdown n={count} onCancel={() => cancelEmergency('button')} />;
   if (phase === 'sent') return <Sent elder={elder} alert={emergencyAlert} toast={toast} onBack={() => { clearAll(); go('idle'); }} />;
   if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} />;
@@ -403,6 +405,46 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
       <button type="button" className="big-btn sos" style={{ marginTop: 'auto' }} onClick={emergency}>
         <Icon name="alert" size={27} />
         জরুরি অবস্থা
+      </button>
+    </div>
+  );
+}
+
+/** Consent: the elder chooses what the family can see. Help and emergency alerts always go through. */
+function Consent({ elder }) {
+  const { state, dispatch } = useStore();
+  const c = state.consent[elder.id];
+  useEffect(() => speak('consent_intro', elder), []); // eslint-disable-line react-hooks/exhaustive-deps
+  const ITEMS = [
+    { key: 'medication', title: 'ওষুধ খাওয়ার খবর', sub: 'খেয়েছেন কি না, পরিবার দেখবে' },
+    { key: 'wellbeing', title: 'শরীর কেমন আছে', sub: 'দৈনিক কথার খবর পরিবার দেখবে' },
+    { key: 'location', title: 'আমি কোথায় আছি', sub: 'ফোনের অবস্থান পরিবার দেখবে' },
+  ];
+  return (
+    <div className="scr elder" style={{ gap: 12 }}>
+      <div className="row" style={{ flexShrink: 0 }}>
+        <img className="av" src="/img/logo.png" alt="ছোটু" width="56" height="56" style={{ width: 56, height: 56 }} />
+        <div className="t-name grow">আপনার সম্মতি</div>
+        <Avatar person={elder} size={48} />
+      </div>
+      <div className="card caption" style={{ minHeight: 0 }}>
+        <div className="cap-text" style={{ fontSize: 23 }}>{lineText('consent_intro', elder)}</div>
+      </div>
+      {ITEMS.map((it) => (
+        <button key={it.key} type="button" className="consent-row" role="switch" aria-checked={c[it.key]}
+          onClick={() => dispatch({ type: 'consent/set', elderId: elder.id, key: it.key, value: !c[it.key] })}>
+          <span className="grow" style={{ textAlign: 'left' }}>
+            <span style={{ display: 'block', fontSize: 22, fontWeight: 700 }}>{it.title}</span>
+            <span className="t-sub" style={{ display: 'block', fontSize: 16 }}>{it.sub}</span>
+          </span>
+          <span className="consent-state" data-on={c[it.key]}>{c[it.key] ? 'হ্যাঁ' : 'না'}</span>
+        </button>
+      ))}
+      <div className="note-box" style={{ fontSize: 17 }}>
+        সাহায্য চাইলে এবং জরুরি বার্তা সবসময় আপনার পরিবারের কাছে যাবে, এগুলো বন্ধ করা যায় না।
+      </div>
+      <button type="button" className="answer yes" style={{ marginTop: 'auto', minHeight: 72 }} onClick={() => { stopSpeaking(); dispatch({ type: 'consent/agree', elderId: elder.id }); }}>
+        <Icon name="check" size={26} /> ঠিক আছে, রাজি
       </button>
     </div>
   );

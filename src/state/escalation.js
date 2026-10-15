@@ -31,7 +31,13 @@ function logAt(state, at, entry) {
 }
 
 /** Add an alert. `ladder: false` tells everyone at once (used for "help"). */
+/** Alerts about medicine status follow the elder's consent. "মনে নেই", help and emergency always go through. */
+const NEEDS_MEDICATION_CONSENT = new Set(['missed', 'prn']);
+
 export function raiseAlert(state, { elderId, kind, at, text, doseKeys = [], ladder = true }) {
+  if (NEEDS_MEDICATION_CONSENT.has(kind) && state.consent?.[elderId]?.medication === false) {
+    return logAt(state, at, { elderId, by: 'chotu', kind: 'alert', text: 'পরিবারকে জানানো হয়নি: ওষুধের তথ্য শেয়ার করার সম্মতি বন্ধ আছে' });
+  }
   const alert = {
     id: `a${at}-${elderId}-${kind}-${state.alerts.length}`,
     elderId, kind, text, doseKeys, createdAt: at, ladder,

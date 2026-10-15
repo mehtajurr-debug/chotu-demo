@@ -257,3 +257,13 @@ button { font-family: inherit; }
 /* "I gave it" button under each dose on the caregiver dashboard */
 .give-btn { align-self: flex-start; margin-left: 60px; border: 1.5px solid #A9CCF2; background: #fff; color: #0B2F8A; border-radius: 12px; padding: 4px 12px; min-height: 36px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .give-btn:hover { border-color: #5B9BE0; }
+
+/* Elder consent screen */
+.consent-row { display: flex; align-items: center; gap: 12px; width: 100%; background: #fff; border: 2px solid #A9CCF2; border-radius: 20px; padding: 12px 14px; cursor: pointer; color: #10213F; font: inherit; min-height: 76px; }
+.consent-state { min-width: 74px; text-align: center; border-radius: 16px; padding: 8px 10px; font-size: 21px; font-weight: 700; background: #E3EFFC; color: #425A80; border: 2px solid #A9CCF2; }
+.consent-state[data-on="true"] { background: #17633F; color: #fff; border-color: #17633F; }
+
+/* Small selectable chips inside caregiver screens (elder and day pickers) */
+.chip-sel { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #A9CCF2; background: #fff; color: #10213F; border-radius: 16px; padding: 3px 12px 3px 4px; min-height: 40px; font: inherit; font-size: 15.5px; font-weight: 700; cursor: pointer; }
+.chip-sel:not(:has(img, .av-init)) { padding-left: 12px; }
+.chip-sel.on { background: #0B2F8A; border-color: #0B2F8A; color: #fff; }

@@ -20,7 +20,7 @@ export function todayDoses(elder, now, meds, doses) {
 }
 
 /** The most important thing to say about this elder right now: { cls, icon, text } or null. */
-export function headline(elder, now, meds, doses, alerts = [], caregivers = []) {
+export function headline(elder, now, meds, doses, alerts = [], caregivers = [], shares = true) {
   // An open alert beats everything else.
   const mine = alerts.filter((a) => a.elderId === elder.id && !a.resolvedAt).sort((a, b) => b.createdAt - a.createdAt);
   const open = mine.find((a) => !a.handledBy);
@@ -30,6 +30,7 @@ export function headline(elder, now, meds, doses, alerts = [], caregivers = []) 
     const who = caregivers.find((c) => c.id === handling.handledBy)?.name;
     return { cls: 'warn', icon: 'alert', text: `${who} দেখছেন: ${alertLabel(handling)}` };
   }
+  if (!shares) return { cls: '', icon: 'alert', text: 'ওষুধের খবর শেয়ার বন্ধ (সম্মতি)' };
   const today = todayDoses(elder, now, meds, doses);
   const names = (list) => [...new Set(list.map((d) => d.med.short))].join(' + ');
   const pick = (s) => today.filter((d) => d.status === s);

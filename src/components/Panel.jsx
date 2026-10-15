@@ -121,6 +121,10 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
           onClick={() => dispatch({ type: 'clock/advance', minutes: next.at - state.clock })}>
           Next dose → {next ? `${next.med.short}, ${enTime(next.at)}` : 'none'}
         </button>
+        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
+          onClick={() => dispatch({ type: 'consent/show', elderId: elder.id })}>
+          Show consent screen on {elder.nameEn}’s phone
+        </button>
       </div>
 
       <div className="now" role="status" aria-live="polite">{NOW[phase] || ''}</div>

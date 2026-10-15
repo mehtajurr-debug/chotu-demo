@@ -15,7 +15,7 @@ const YESTERDAY = [
 
 export function makeSeed() {
   return {
-    version: 7,
+    version: 9,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -36,9 +36,9 @@ export function makeSeed() {
         sleep: '22:30',
         alertOrder: ['shumon', 'ruma'],
         regimens: [
-          { id: 'b1', medId: 'comet', amount: 1, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
-          { id: 'b2', medId: 'angilock', amount: 1, slots: ['noon'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
-          { id: 'b3', medId: 'rosuva', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: null },
+          { id: 'b1', medId: 'comet', amount: 1, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
+          { id: 'b2', medId: 'angilock', amount: 1, slots: ['noon'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
+          { id: 'b3', medId: 'rosuva', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: null },
         ],
       },
       {
@@ -51,9 +51,9 @@ export function makeSeed() {
         sleep: '22:00',
         alertOrder: ['shumon', 'ruma'],
         regimens: [
-          { id: 'm1', medId: 'osartil', amount: 1, slots: ['noon'], meal: 'before', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
-          { id: 'm2', medId: 'calbo-d', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'weeks', count: 4 }, asNeeded: false, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
-          { id: 'm3', medId: 'napa-extra', amount: 1, slots: [], meal: 'after', duration: { type: 'ongoing' }, asNeeded: true, minGapHours: 6, maxPerDay: 3, status: 'active', startDay: 0, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm1', medId: 'osartil', amount: 1, slots: ['noon'], meal: 'before', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm2', medId: 'calbo-d', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'weeks', count: 4 }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm3', medId: 'napa-extra', amount: 1, slots: [], meal: 'after', duration: { type: 'ongoing' }, asNeeded: true, minGapHours: 6, maxPerDay: 3, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
         ],
       },
     ],
@@ -73,6 +73,13 @@ export function makeSeed() {
     ],
     // Medicines the caregiver typed in that are not in the library: { id, name, short, bn, strength, form, image }
     customMeds: [],
+    // What each elder agreed to share with the family. Help and emergency alerts always go through.
+    consent: {
+      baba: { medication: true, wellbeing: true, location: false, agreedAt: Y(9, 0) },
+      ma: { medication: true, wellbeing: true, location: false, agreedAt: Y(9, 0) },
+    },
+    showConsentFor: null, // presenter opens the consent screen on an elder phone
+
     // Alerts to caregivers (see src/state/escalation.js)
     alerts: [],
     // Presenter toggle: this elder's phone can't be reached (changes the alert wording)

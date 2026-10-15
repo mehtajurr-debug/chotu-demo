@@ -143,6 +143,17 @@ function reducer(state, action) {
       return updateElder(state, action.elderId, (e) => ({ ...e, alertOrder: action.order }));
     case 'elder/sleep':
       return updateElder(state, action.elderId, (e) => ({ ...e, sleep: action.sleep }));
+    // Consent: only the elder changes it, on their own phone.
+    case 'consent/set':
+      return { ...state, consent: { ...state.consent, [action.elderId]: { ...state.consent[action.elderId], [action.key]: action.value } } };
+    case 'consent/show':
+      return { ...state, showConsentFor: action.elderId };
+    case 'consent/agree': {
+      const c = state.consent[action.elderId];
+      const on = [c.medication && 'ওষুধের খবর', c.wellbeing && 'শরীরের খবর', c.location && 'অবস্থান'].filter(Boolean);
+      const s = { ...state, showConsentFor: null, consent: { ...state.consent, [action.elderId]: { ...c, agreedAt: state.clock } } };
+      return logEntry(s, { elderId: action.elderId, by: action.elderId, kind: 'consent', text: `সম্মতি দিয়েছেন: ${on.length ? on.join(', ') : 'কিছুই শেয়ার নয়'} (সাহায্য ও জরুরি বার্তা সবসময় যাবে)` });
+    }
     case 'elder/unreachable':
       return { ...state, unreachable: { ...state.unreachable, [action.elderId]: !state.unreachable?.[action.elderId] } };
 

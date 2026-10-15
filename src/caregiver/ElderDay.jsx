@@ -73,6 +73,7 @@ function Today({ elder, openAlert }) {
   const { state, dispatch } = useStore();
   const me = useCaregiver();
   const meds = useMeds();
+  const shares = state.consent?.[elder.id]?.medication !== false; // the elder agreed to share medicine status
   const give = (d) => dispatch({ type: 'dose/given', elderId: elder.id, key: d.key, by: me.id, medName: d.med.short });
   const prn = elder.regimens.filter((r) => r.asNeeded && r.status === 'active')
     .map((r) => ({ r, m: meds[r.medId], chk: prnCheck(r, state.doses, state.clock) }));
@@ -100,6 +101,11 @@ function Today({ elder, openAlert }) {
         </button>
       ))}
 
+      {!shares && (
+        <div className="note-box">{elder.name} ওষুধ খাওয়ার খবর শেয়ার করা বন্ধ রেখেছেন, তাই এখানে দেখানো হচ্ছে না। সাহায্য ও জরুরি বার্তা সবসময় আসবে।</div>
+      )}
+
+      {shares && (
       <div className="card">
         <div className="row">
           <div className="grow" style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>আজকের ওষুধ</div>
@@ -142,8 +148,9 @@ function Today({ elder, openAlert }) {
           );
         })}
       </div>
+      )}
 
-      {prn.length > 0 && (
+      {shares && prn.length > 0 && (
         <div className="card">
           <div style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>প্রয়োজনের ওষুধ</div>
           {prn.map(({ r, m, chk }) => (
