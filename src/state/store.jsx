@@ -2,6 +2,7 @@
 import { createContext, useContext, useEffect, useMemo, useReducer } from 'react';
 import { makeSeed } from '../data/seed.js';
 import { medMap } from '../lib/schedule.js';
+import { raiseAlert, runEscalation } from './escalation.js';
 
 const KEY = 'chotu-demo-state';
 
@@ -28,7 +29,7 @@ const isPrimary = (state, id) => state.caregivers.some((c) => c.id === id && c.p
 function reducer(state, action) {
   switch (action.type) {
     case 'clock/advance':
-      return { ...state, clock: state.clock + action.minutes };
+      return runEscalation({ ...state, clock: state.clock + action.minutes });
     case 'elder/show':
       return { ...state, elderOnPhone: action.elderId };
     case 'caregiver/use':
@@ -62,8 +63,31 @@ function reducer(state, action) {
       const doses = { ...state.doses };
       const until = action.untilIn ? state.clock + action.untilIn : undefined; // "not yet": ask again later
       for (const k of action.keys) doses[k] = { status: action.status, at: state.clock, how: action.how, until };
-      return logEntry({ ...state, doses }, { elderId: action.elderId, by: action.elderId, kind: 'dose', status: action.status, text: action.text });
+      let s = logEntry({ ...state, doses }, { elderId: action.elderId, by: action.elderId, kind: 'dose', status: action.status, text: action.text });
+      // "মনে নেই" and "help" alert the family. Help goes to everyone at once.
+      if (action.alert) s = raiseAlert(s, { elderId: action.elderId, kind: action.status, at: state.clock, text: action.alert, doseKeys: action.keys, ladder: action.status !== 'help' });
+      return s;
     }
+
+    // ----- alerts -----
+    case 'alert/handle': {
+      const a = state.alerts.find((x) => x.id === action.id);
+      if (!a || a.handledBy) return state; // someone else already took it
+      const s = { ...state, alerts: state.alerts.map((x) => (x.id === a.id ? { ...x, handledBy: action.by, handledAt: state.clock } : x)) };
+      return logEntry(s, { elderId: a.elderId, by: action.by, kind: 'alert', text: 'আমি দেখছি (অন্যদের আর জানানো হবে না)' });
+    }
+    case 'alert/resolve': {
+      const a = state.alerts.find((x) => x.id === action.id);
+      if (!a) return state;
+      const s = { ...state, alerts: state.alerts.map((x) => (x.id === a.id ? { ...x, resolvedAt: state.clock } : x)) };
+      return logEntry(s, { elderId: a.elderId, by: action.by, kind: 'alert', text: 'সতর্কতা মিটে গেছে' + (action.note ? ': ' + action.note : '') });
+    }
+    case 'alert/seen':
+      return { ...state, alerts: state.alerts.map((x) => (x.id === action.id && !x.seenBy.includes(action.by) ? { ...x, seenBy: [...x.seenBy, action.by] } : x)) };
+    case 'alert/told': // the elder phone has spoken about this alert
+      return { ...state, alerts: state.alerts.map((x) => (x.id === action.id ? { ...x, [action.field]: true } : x)) };
+    case 'elder/unreachable':
+      return { ...state, unreachable: { ...state.unreachable, [action.elderId]: !state.unreachable?.[action.elderId] } };
 
     case 'regimen/discard':
       return updateElder(state, action.elderId, (e) => ({ ...e, regimens: e.regimens.filter((r) => r.id !== action.regimenId) }));

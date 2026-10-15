@@ -66,13 +66,32 @@ export function dosesForDay(elder, day, meds) {
 
 // ---------- what happened to each dose ----------
 
-/** A dose is finished once the elder answered taken / don't remember / help. "Not yet" comes back later. */
-const FINISHED = new Set(['taken', 'unsure', 'help']);
+/** A dose is finished once the elder answered taken / don't remember / help, or it was escalated as missed. "Not yet" comes back later. */
+const FINISHED = new Set(['taken', 'unsure', 'help', 'missed']);
+
+// Escalation timing (demo-clock minutes after the dose time, or after the last "not yet")
+export const REPEAT_EVERY = 10; // repeat the reminder at +10 and +20
+export const ALERT_AFTER = 30; // no answer by +30: the family is alerted
+
+/** A dose only counts from the moment its schedule was switched on (no alerts for times before that). */
+const counts = (d) => d.regimen.verifiedAt == null || d.at >= d.regimen.verifiedAt;
+
+/** When the waiting started: the dose time, or the last "not yet" answer. */
+export function waitingSince(dose, doses) {
+  const rec = doses[dose.key];
+  return rec?.status === 'snoozed' ? Math.max(dose.at, rec.at) : dose.at;
+}
+
+/** 0 = first reminder, 1 = first repeat (+10), 2 = second repeat (+20). */
+export function reminderLevel(group, now, doses) {
+  const since = Math.min(...group.map((d) => waitingSince(d, doses)));
+  return Math.max(0, Math.min(2, Math.floor((now - since) / REPEAT_EVERY)));
+}
 
 /** Today's doses whose time has come and that still need an answer. Snoozed ones return when their time is up. */
 export function dueGroup(elder, now, meds, doses) {
   return dosesForDay(elder, dayOf(now), meds).filter((d) => {
-    if (d.at > now) return false;
+    if (d.at > now || !counts(d)) return false;
     const rec = doses[d.key];
     if (!rec) return true;
     if (rec.status === 'snoozed') return rec.until <= now;

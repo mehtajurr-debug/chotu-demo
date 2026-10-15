@@ -19,8 +19,8 @@ export default function ElderDay({ elderId, onBack, toast }) {
   const elder = state.elders.find((e) => e.id === elderId);
   const now = state.clock;
   const today = todayDoses(elder, now, meds, state.doses);
-  const log = state.log.filter((l) => l.elderId === elderId).slice().reverse();
-  const who = (id) => state.caregivers.find((c) => c.id === id)?.name || state.elders.find((e) => e.id === id)?.name;
+  const log = state.log.filter((l) => l.elderId === elderId).slice().sort((a, b) => b.at - a.at); // newest first
+  const who = (id) => (id === 'chotu' ? 'ছোটু' : state.caregivers.find((c) => c.id === id)?.name || state.elders.find((e) => e.id === id)?.name);
 
   return (
     <div className="scr care">

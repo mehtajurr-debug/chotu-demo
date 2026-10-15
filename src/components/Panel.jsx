@@ -1,7 +1,8 @@
 // Presenter-only panel: stands in for the elder's voice, and skips to the next dose.
 // Nothing here listens to a microphone or calls an AI.
 import { useStore, useMeds } from '../state/store.jsx';
-import { nextDose } from '../lib/schedule.js';
+import { ALERT_AFTER, REPEAT_EVERY, dueGroup, nextDose, waitingSince } from '../lib/schedule.js';
+import { ESCALATE_EVERY, recipients, topLevel } from '../state/escalation.js';
 import { enTime } from '../lib/time.js';
 import { UTTERANCES, sayAsElder } from '../lib/voice.js';
 import { disableMic, enableMic, voiceStatus } from '../lib/mic.js';
@@ -69,6 +70,38 @@ function MicControl({ micOn, setMicOn, lastHeard }) {
   );
 }
 
+/** Plain-English list of what the demo clock will trigger next, so the presenter can narrate it. */
+function upcoming(state, meds) {
+  const out = [];
+  const now = state.clock;
+  const name = (id) => state.caregivers.find((c) => c.id === id)?.nameEn;
+  for (const elder of state.elders) {
+    const due = dueGroup(elder, now, meds, state.doses);
+    if (due.length) {
+      const since = Math.min(...due.map((d) => waitingSince(d, state.doses)));
+      const steps = [
+        [since + REPEAT_EVERY, 'repeats the reminder'],
+        [since + 2 * REPEAT_EVERY, 'repeats again'],
+        [since + ALERT_AFTER, `alerts ${name(elder.alertOrder[0])}`],
+      ];
+      const next = steps.find(([t]) => t > now);
+      if (next) out.push(`${elder.nameEn}: no answer yet. At ${enTime(next[0])} Chotu ${next[1]}.`);
+    }
+  }
+  for (const a of state.alerts) {
+    if (a.resolvedAt) continue;
+    const elder = state.elders.find((e) => e.id === a.elderId);
+    if (a.handledBy) { out.push(`${elder.nameEn}: ${name(a.handledBy)} is handling the alert. Nobody else is pinged.`); continue; }
+    const told = recipients(state, a).map(name).join(' + ');
+    if (a.ladder && a.level < topLevel(state, a.elderId)) {
+      const nextAt = a.createdAt + (a.level + 1) * ESCALATE_EVERY;
+      const whoNext = a.level + 1 < elder.alertOrder.length ? name(elder.alertOrder[a.level + 1]) : 'everyone';
+      out.push(`${elder.nameEn}: alert sent to ${told}. If nobody taps “আমি দেখছি”, ${whoNext} at ${enTime(nextAt)}.`);
+    } else out.push(`${elder.nameEn}: alert sent to ${told}. Waiting for someone to take it.`);
+  }
+  return out;
+}
+
 export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
   const { state, dispatch } = useStore();
   const meds = useMeds();
@@ -87,6 +120,16 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
       </div>
 
       <div className="now" role="status" aria-live="polite">{NOW[phase] || ''}</div>
+
+      <div>
+        <h2>Escalation</h2>
+        {upcoming(state, meds).map((t, i) => <p key={i} className="note" style={{ color: 'var(--ink)', fontSize: 13.5, marginBottom: 4 }}>{t}</p>)}
+        {upcoming(state, meds).length === 0 && <p className="note">Nothing pending. Try “Next dose”, stay silent, then +10 min three times.</p>}
+        <label className="toggle-row">
+          <input type="checkbox" checked={Boolean(state.unreachable?.[elder.id])} onChange={() => dispatch({ type: 'elder/unreachable', elderId: elder.id })} />
+          <span>{elder.nameEn}’s phone unreachable <small>(alert says “can’t reach”, not “missed”)</small></span>
+        </label>
+      </div>
 
       <MicControl micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} />
 

@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
 import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
-import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup } from '../lib/schedule.js';
+import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, reminderLevel } from '../lib/schedule.js';
 import { lineText, onElderSays, speak } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
@@ -29,6 +29,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const now = state.clock;
   const due = dueGroup(elder, now, meds, state.doses);
   const dueKey = due.map((d) => d.key).join('|');
+  const offline = Boolean(state.unreachable?.[elder.id]); // presenter toggle: this phone can't be reached
 
   const [phase, setPhase] = useState('idle'); // idle | speak | listen | readback | logged | buttons | done
   const [caption, setCaption] = useState('');
@@ -58,21 +59,47 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   useEffect(() => () => clearAll(), []); // stop sounds and timers when this phone screen goes away
   useEffect(() => { onPhase?.(phase); }, [phase, onPhase]);
 
-  // A dose is due and Chotu is free: start the reminder.
+  // A dose is due and Chotu is free: start the reminder. With no answer, the demo clock brings repeats at +10 and +20.
+  const level = due.length ? reminderLevel(due, now, state.doses) : 0;
+  const lastLevel = useRef(-1);
   useEffect(() => {
-    if (phase === 'idle' && due.length) startReminder(due);
-  }, [dueKey, phase]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (offline || !due.length) return;
+    // A newer repeat takes over, unless an answer is being logged right now.
+    const waiting = phase === 'idle' || (level > lastLevel.current && ['speak', 'listen', 'readback', 'buttons'].includes(phase));
+    if (waiting) startReminder(due, level);
+  }, [dueKey, phase, level, offline]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function startReminder(group) {
+  function startReminder(group, lvl) {
     clearAll();
     tries.current = 0;
+    lastLevel.current = lvl;
     latest.current.active = group;
     setActive(group);
     setHeard('');
-    const asked = group.some((d) => latest.current.state.doses[d.key]?.status === 'snoozed');
     go('speak');
-    say(asked ? 'repeat_1' : `reminder_${group[0].slot}`, listen);
+    say(lvl === 0 ? `reminder_${group[0].slot}` : `repeat_${lvl}`, listen);
   }
+
+  // At +30 the family was alerted: tell the elder, kindly. Later, when someone takes it, say so too.
+  const missedAlert = state.alerts.find((a) => a.elderId === elder.id && a.kind === 'missed' && !a.told && !a.resolvedAt && now - a.createdAt <= 15);
+  const handledAlert = state.alerts.find((a) => a.elderId === elder.id && a.handledBy && !a.handlingTold && !a.resolvedAt);
+  useEffect(() => {
+    if (offline || !missedAlert) return;
+    if (!['idle', 'listen', 'buttons', 'readback'].includes(phaseRef.current)) return;
+    dispatch({ type: 'alert/told', id: missedAlert.id, field: 'told' });
+    clearAll();
+    setHeard('');
+    go('speak');
+    say('no_response_family_told', () => finish(3500));
+  }, [missedAlert?.id, phase, offline]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (offline || !handledAlert || phaseRef.current !== 'idle' || due.length) return;
+    dispatch({ type: 'alert/told', id: handledAlert.id, field: 'handlingTold' });
+    latest.current.active = [];
+    setActive([]);
+    go('speak');
+    say('family_handling', () => finish(3000));
+  }, [handledAlert?.id, phase, offline]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function listen() {
     go('listen');
@@ -177,13 +204,15 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
       const at = lastTaken(d.regimen.id, s.doses);
       return `${d.med.short} শেষ খেয়েছেন ${at != null ? bnWhen(at, s.clock) : 'কখন, তথ্য নেই'}`;
     }).join('; ');
-    record('unsure', how, `“মনে নেই” বলেছেন। ছোটু অপেক্ষা করতে বলেছে, ওষুধ খেতে বলেনি। ${last}`);
+    record('unsure', how, `“মনে নেই” বলেছেন। ছোটু অপেক্ষা করতে বলেছে, ওষুধ খেতে বলেনি। ${last}`, {
+      alert: `${latest.current.elder.name} বলছেন ওষুধ খাওয়ার কথা মনে নেই। ছোটু অপেক্ষা করতে বলেছে, ওষুধ খেতে বলেনি। ${last}`,
+    });
     go('speak');
     say('ack_not_sure', () => finish(4000));
   }
 
   function help(how, what = '“সাহায্য চাই” বলেছেন') {
-    record('help', how, `ওষুধের সময় ${what} (${names()})`);
+    record('help', how, `ওষুধের সময় ${what} (${names()})`, { alert: `${latest.current.elder.name} ${what}` });
     go('speak');
     say('ack_help', () => finish(4000));
   }
@@ -232,6 +261,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
 
   const emergency = () => toast('জরুরি বোতাম Stage 6-এ চালু হবে');
 
+  if (offline) return <Offline elder={elder} />;
   if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} />;
 
   const listening = ['listen', 'readback', 'logged', 'buttons'].includes(phase);
@@ -310,6 +340,18 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         <Icon name="alert" size={27} />
         জরুরি অবস্থা
       </button>
+    </div>
+  );
+}
+
+/** Presenter toggle "phone unreachable": nothing reaches this phone. */
+function Offline({ elder }) {
+  return (
+    <div className="scr elder" style={{ background: '#C9D3E0', alignItems: 'center', justifyContent: 'center', textAlign: 'center', gap: 16 }}>
+      <Avatar person={elder} size={96} />
+      <div style={{ fontSize: 30, fontWeight: 700, color: '#425A80' }}>{elder.gen} ফোন</div>
+      <div style={{ fontSize: 22, fontWeight: 600, color: '#425A80', lineHeight: 1.5 }}>সংযোগ নেই<br />(ফোন বন্ধ বা নেটওয়ার্কের বাইরে)</div>
+      <div style={{ fontSize: 15, color: '#425A80' }}>ডেমো: প্যানেল থেকে আবার চালু করুন</div>
     </div>
   );
 }

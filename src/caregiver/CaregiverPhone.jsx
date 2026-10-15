@@ -10,6 +10,7 @@ import AddMedicine from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
 import ElderDay from './ElderDay.jsx';
 import { headline } from './status.js';
+import { AlertBanner, AlertDetail, AlertsList, unseenAlerts } from './Alerts.jsx';
 
 function untilText(mins) {
   if (mins <= 0) return 'এখন সময়';
@@ -18,7 +19,7 @@ function untilText(mins) {
   return m ? `${bn(h)} ঘণ্টা ${bn(m)} মিনিট পরে` : `${bn(h)} ঘণ্টা পরে`;
 }
 
-const SCREEN_LABEL = { home: 'home', add: 'add medicine', verify: 'verify', day: 'elder’s day' };
+const SCREEN_LABEL = { home: 'home', add: 'add medicine', verify: 'verify', day: 'elder’s day', alerts: 'alerts', alert: 'alert' };
 
 export default function CaregiverPhone({ toast, onScreen }) {
   const { state } = useStore();
@@ -33,19 +34,34 @@ export default function CaregiverPhone({ toast, onScreen }) {
   }, [state.elders, screen]);
 
   const home = () => setScreen({ name: 'home' });
-  if (screen.name === 'add') return <AddMedicine elderId={screen.elderId} onDone={home} toast={toast} />;
-  if (screen.name === 'day') return <ElderDay elderId={screen.elderId} onBack={home} toast={toast} />;
-  if (screen.name === 'verify') return <Verify elderId={screen.elderId} regimenId={screen.regimenId} onDone={home} toast={toast} />;
-  return <Home toast={toast} go={setScreen} />;
+  const { dispatch } = useStore();
+  const openAlert = (id) => { dispatch({ type: 'alert/seen', id, by: me.id }); setScreen({ name: 'alert', id }); };
+
+  let view;
+  if (screen.name === 'add') view = <AddMedicine elderId={screen.elderId} onDone={home} toast={toast} />;
+  else if (screen.name === 'day') view = <ElderDay elderId={screen.elderId} onBack={home} toast={toast} />;
+  else if (screen.name === 'verify') view = <Verify elderId={screen.elderId} regimenId={screen.regimenId} onDone={home} toast={toast} />;
+  else if (screen.name === 'alerts') view = <AlertsList onOpen={openAlert} onBack={home} />;
+  else if (screen.name === 'alert') view = <AlertDetail id={screen.id} onBack={() => setScreen({ name: 'alerts' })} toast={toast} />;
+  else view = <Home toast={toast} go={setScreen} />;
+
+  // A new alert for whoever holds this phone drops in as a banner (not while they are already reading it).
+  const fresh = unseenAlerts(state, me.id).filter((a) => !(screen.name === 'alert' && screen.id === a.id));
+  return (
+    <>
+      {view}
+      {fresh[0] && <AlertBanner key={fresh[0].id} alert={fresh[0]} onOpen={() => openAlert(fresh[0].id)} />}
+    </>
+  );
 }
 
 const STATUS_ICON_COLOUR = { '': '#0B2F8A', ok: '#17633F', warn: '#7A4A00', bad: '#8E1B16' };
 
-function ElderCard({ elder, now, meds, doses, onOpen }) {
+function ElderCard({ elder, now, meds, doses, alerts, caregivers, onOpen }) {
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
-  const head = headline(elder, now, meds, doses); // what just happened, if anything
+  const head = headline(elder, now, meds, doses, alerts, caregivers); // an alert, or what just happened
   return (
     <button type="button" className="card tap" style={{ padding: 16, gap: 14 }} onClick={onOpen}>
       <div className="row" style={{ gap: 14 }}>
@@ -76,7 +92,7 @@ function ElderCard({ elder, now, meds, doses, onOpen }) {
 // `stage` = the build stage that brings this tab to life.
 const TABS = [
   { icon: 'home', label: 'হোম' },
-  { icon: 'bell', label: 'সতর্কতা', stage: 4 },
+  { icon: 'bell', label: 'সতর্কতা', go: 'alerts' },
   { icon: 'doc', label: 'সারাংশ', stage: 7 },
   { icon: 'sliders', label: 'সেটিংস', stage: 7 },
 ];
@@ -88,6 +104,7 @@ function Home({ toast, go }) {
   const later = (stage) => toast(`এটি Stage ${stage}-এ তৈরি হবে`);
   const pending = state.elders.flatMap((e) => e.regimens.filter((r) => r.status === 'pending').map((r) => ({ e, r })));
   const nameOf = (id) => state.caregivers.find((c) => c.id === id)?.name;
+  const unseen = unseenAlerts(state, me.id).length;
 
   return (
     <div className="scr care">
@@ -128,7 +145,7 @@ function Home({ toast, go }) {
         </div>
 
         {state.elders.map((e) => (
-          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} doses={state.doses} onOpen={() => go({ name: 'day', elderId: e.id })} />
+          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} doses={state.doses} alerts={state.alerts} caregivers={state.caregivers} onOpen={() => go({ name: 'day', elderId: e.id })} />
         ))}
 
         <button type="button" className="add-btn" onClick={() => go({ name: 'add' })}>
@@ -140,8 +157,11 @@ function Home({ toast, go }) {
       <nav className="nav" aria-label="Caregiver menu" style={{ marginTop: 0 }}>
         {TABS.map((t, i) => (
           <button key={t.icon} type="button" aria-current={i === 0 ? 'page' : undefined}
-            onClick={() => t.stage && later(t.stage)}>
-            <span className="ic"><Icon name={t.icon} size={22} width={2.2} /></span>
+            onClick={() => (t.go ? go({ name: t.go }) : t.stage && later(t.stage))}>
+            <span className="ic" style={{ position: 'relative' }}>
+              <Icon name={t.icon} size={22} width={2.2} />
+              {t.go === 'alerts' && unseen > 0 && <span className="dot" />}
+            </span>
             {t.label}
           </button>
         ))}

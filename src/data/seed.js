@@ -15,7 +15,7 @@ const YESTERDAY = [
 
 export function makeSeed() {
   return {
-    version: 4,
+    version: 5,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -66,6 +66,10 @@ export function makeSeed() {
     log: YESTERDAY.map(([, elderId, at, text]) => ({ at, elderId, by: elderId, kind: 'dose', text })),
     // Medicines the caregiver typed in that are not in the library: { id, name, short, bn, strength, form, image }
     customMeds: [],
+    // Alerts to caregivers (see src/state/escalation.js)
+    alerts: [],
+    // Presenter toggle: this elder's phone can't be reached (changes the alert wording)
+    unreachable: { baba: false, ma: false },
     // Shared notes between caregivers, per elder.
     notes: [],
   };
