@@ -79,6 +79,6 @@ npx vercel deploy --prod
 
 ## Assets and data
 
-- `Assets/` holds the original photos; the app uses resized copies in `public/img/`.
+- `Assets/` holds the original photos; the app uses copies with simple file names in `public/img/`.
 - All people, schedules and histories are **synthetic** sample data for the demo.
 - On the Gemini free tier Google may use what you send to improve its products: test only with your own, volunteer or synthetic voices, never real patient data.
