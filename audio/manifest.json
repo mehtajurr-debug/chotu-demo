@@ -1,0 +1,137 @@
+{
+  "welcome": {
+    "file": "audio/welcome.wav",
+    "text": "আমি ছোটু। আমি আপনাকে ওষুধের সময় মনে করিয়ে দেব।",
+    "when": "First screen on the elder phone"
+  },
+  "reminder_morning_baba": {
+    "file": "audio/reminder_morning_baba.wav",
+    "text": "বাবা, সকালের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, morning slot"
+  },
+  "reminder_morning_ma": {
+    "file": "audio/reminder_morning_ma.wav",
+    "text": "মা, সকালের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, morning slot"
+  },
+  "reminder_noon_baba": {
+    "file": "audio/reminder_noon_baba.wav",
+    "text": "বাবা, দুপুরের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, noon slot"
+  },
+  "reminder_noon_ma": {
+    "file": "audio/reminder_noon_ma.wav",
+    "text": "মা, দুপুরের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, noon slot"
+  },
+  "reminder_night_baba": {
+    "file": "audio/reminder_night_baba.wav",
+    "text": "বাবা, রাতের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, night slot"
+  },
+  "reminder_night_ma": {
+    "file": "audio/reminder_night_ma.wav",
+    "text": "মা, রাতের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, night slot"
+  },
+  "reminder_before_meal_baba": {
+    "file": "audio/reminder_before_meal_baba.wav",
+    "text": "বাবা, খাবারের আগে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, before-meal timing"
+  },
+  "reminder_before_meal_ma": {
+    "file": "audio/reminder_before_meal_ma.wav",
+    "text": "মা, খাবারের আগে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, before-meal timing"
+  },
+  "reminder_after_meal_baba": {
+    "file": "audio/reminder_after_meal_baba.wav",
+    "text": "বাবা, খাবার খাওয়া হলে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, after-meal timing"
+  },
+  "reminder_after_meal_ma": {
+    "file": "audio/reminder_after_meal_ma.wav",
+    "text": "মা, খাবার খাওয়া হলে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।",
+    "when": "Dose due, after-meal timing"
+  },
+  "repeat_1_baba": {
+    "file": "audio/repeat_1_baba.wav",
+    "text": "বাবা, ওষুধটি কি খেয়েছেন? আমাকে বলুন।",
+    "when": "No response at +10 min, or after 'not yet'"
+  },
+  "repeat_1_ma": {
+    "file": "audio/repeat_1_ma.wav",
+    "text": "মা, ওষুধটি কি খেয়েছেন? আমাকে বলুন।",
+    "when": "No response at +10 min, or after 'not yet'"
+  },
+  "repeat_2_baba": {
+    "file": "audio/repeat_2_baba.wav",
+    "text": "বাবা, ওষুধের সময় পেরিয়ে যাচ্ছে। খেয়েছেন কি না, আমাকে বলুন।",
+    "when": "No response at +20 min"
+  },
+  "repeat_2_ma": {
+    "file": "audio/repeat_2_ma.wav",
+    "text": "মা, ওষুধের সময় পেরিয়ে যাচ্ছে। খেয়েছেন কি না, আমাকে বলুন।",
+    "when": "No response at +20 min"
+  },
+  "didnt_hear": {
+    "file": "audio/didnt_hear.wav",
+    "text": "আমি ঠিক বুঝতে পারিনি, আবার বলবেন?",
+    "when": "Silence or unclear answer, first time (never blame the elder)"
+  },
+  "ask_buttons": {
+    "file": "audio/ask_buttons.wav",
+    "text": "চাইলে নিচের বোতাম চেপেও বলতে পারেন।",
+    "when": "Second silent or failed attempt, buttons appear"
+  },
+  "undo_ok": {
+    "file": "audio/undo_ok.wav",
+    "text": "ঠিক আছে, মুছে দিলাম। ওষুধ কি খেয়েছেন?",
+    "when": "Elder said 'না' within 5 seconds of a logged dose"
+  },
+  "ask_again": {
+    "file": "audio/ask_again.wav",
+    "text": "ঠিক আছে। ওষুধ কি খেয়েছেন?",
+    "when": "Elder said 'না' to the read-back"
+  },
+  "no_response_family_told": {
+    "file": "audio/no_response_family_told.wav",
+    "text": "আপনার উত্তর পাইনি, তাই আমি আপনার পরিবারকে জানাচ্ছি।",
+    "when": "No response at +30 min, caregiver alerted"
+  },
+  "ack_taken": {
+    "file": "audio/ack_taken.wav",
+    "text": "ধন্যবাদ, লিখে রাখলাম। ভুল হলে “না” বলুন।",
+    "when": "Elder said খেয়েছি (5-second undo starts)"
+  },
+  "ack_not_yet": {
+    "file": "audio/ack_not_yet.wav",
+    "text": "ঠিক আছে। একটু পরে আবার মনে করিয়ে দেব।",
+    "when": "Tap: এখনও খাইনি"
+  },
+  "ack_not_sure": {
+    "file": "audio/ack_not_sure.wav",
+    "text": "একটু অপেক্ষা করুন। আমি আপনার পরিবারকে জানাচ্ছি, যাতে তাঁরা আপনার সঙ্গে কথা বলতে পারেন।",
+    "when": "Tap: মনে নেই (never says to take the medicine)"
+  },
+  "ack_help": {
+    "file": "audio/ack_help.wav",
+    "text": "ঠিক আছে। আমি এখনই আপনার পরিবারকে জানাচ্ছি।",
+    "when": "Tap: সাহায্য চাই"
+  },
+  "family_handling": {
+    "file": "audio/family_handling.wav",
+    "text": "আপনার পরিবারের একজন বিষয়টি দেখছেন।",
+    "when": "A caregiver tapped 'I'm handling this'"
+  },
+  "emergency_countdown": {
+    "file": "audio/emergency_countdown.wav",
+    "text": "জরুরি বার্তা পাঠানো হচ্ছে। ভুল হলে বাতিল বোতাম চাপুন।",
+    "when": "Emergency button tapped, 5-second countdown"
+  },
+  "confirm_taken": {
+    "file": "audio/confirm_taken.wav",
+    "text": "আপনি কি বললেন, ওষুধ খেয়েছেন? হ্যাঁ বা না বলুন।",
+    "when": "Voice reply unclear (low confidence), read back before logging"
+  }
+}

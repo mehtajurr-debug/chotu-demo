@@ -49,6 +49,13 @@ export function bnGreeting(min) {
   return 'শুভ সন্ধ্যা';
 }
 
+/** "আজ সকাল ৮:০২" / "গতকাল রাত ৯:০৬" relative to the current demo time. */
+export function bnWhen(at, now) {
+  const diff = dayOf(at) - dayOf(now);
+  const day = diff === 0 ? 'আজ' : diff === -1 ? 'গতকাল' : diff === 1 ? 'আগামীকাল' : `${bn(Math.abs(diff))} দিন ${diff < 0 ? 'আগে' : 'পরে'}`;
+  return `${day} ${bnTime(at)}`;
+}
+
 /** Day label relative to demo day 0. */
 export function bnDayLabel(min) {
   const d = dayOf(min);

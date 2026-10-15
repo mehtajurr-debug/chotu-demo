@@ -64,11 +64,47 @@ export function dosesForDay(elder, day, meds) {
   return out.sort((a, b) => a.at - b.at);
 }
 
-/** All doses due at the same time as the next dose (e.g. two medicines at night). */
-export function nextDoseGroup(elder, now, meds) {
-  const first = nextDose(elder, now, meds);
-  if (!first) return [];
-  return dosesForDay(elder, dayOf(first.at), meds).filter((x) => x.at === first.at);
+// ---------- what happened to each dose ----------
+
+/** A dose is finished once the elder answered taken / don't remember / help. "Not yet" comes back later. */
+const FINISHED = new Set(['taken', 'unsure', 'help']);
+
+/** Today's doses whose time has come and that still need an answer. Snoozed ones return when their time is up. */
+export function dueGroup(elder, now, meds, doses) {
+  return dosesForDay(elder, dayOf(now), meds).filter((d) => {
+    if (d.at > now) return false;
+    const rec = doses[d.key];
+    if (!rec) return true;
+    if (rec.status === 'snoozed') return rec.until <= now;
+    return !FINISHED.has(rec.status);
+  });
+}
+
+/** Status of one scheduled dose for the caregiver: upcoming | due | snoozed | taken | unsure | help */
+export function doseStatus(dose, now, doses) {
+  const rec = doses[dose.key];
+  if (rec) return rec.status === 'snoozed' && rec.until <= now ? 'due' : rec.status;
+  return dose.at <= now ? 'due' : 'upcoming';
+}
+
+/** The most recent time this medicine was taken, or null. */
+export function lastTaken(regimenId, doses) {
+  let best = null;
+  for (const [k, rec] of Object.entries(doses)) {
+    if (k.startsWith(regimenId + '@') && rec.status === 'taken' && (!best || rec.at > best)) best = rec.at;
+  }
+  return best;
+}
+
+/** All doses at the next dose time (e.g. two medicines at night). With `doses`, skips ones already answered. */
+export function nextDoseGroup(elder, now, meds, doses = {}) {
+  const open = (x) => !FINISHED.has(doses[x.key]?.status);
+  const d = dayOf(now);
+  for (const day of [d, d + 1, d + 2]) {
+    const list = dosesForDay(elder, day, meds).filter((x) => x.at >= now && open(x));
+    if (list.length) return list.filter((x) => x.at === list[0].at);
+  }
+  return [];
 }
 
 /** The next scheduled dose at or after `now` (looks ahead two days). */

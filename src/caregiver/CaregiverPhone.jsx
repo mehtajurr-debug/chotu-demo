@@ -8,6 +8,8 @@ import { ScreenHeader } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import AddMedicine from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
+import ElderDay from './ElderDay.jsx';
+import { headline } from './status.js';
 
 function untilText(mins) {
   if (mins <= 0) return 'এখন সময়';
@@ -16,7 +18,7 @@ function untilText(mins) {
   return m ? `${bn(h)} ঘণ্টা ${bn(m)} মিনিট পরে` : `${bn(h)} ঘণ্টা পরে`;
 }
 
-const SCREEN_LABEL = { home: 'home', add: 'add medicine', verify: 'verify' };
+const SCREEN_LABEL = { home: 'home', add: 'add medicine', verify: 'verify', day: 'elder’s day' };
 
 export default function CaregiverPhone({ toast, onScreen }) {
   const { state } = useStore();
@@ -32,14 +34,18 @@ export default function CaregiverPhone({ toast, onScreen }) {
 
   const home = () => setScreen({ name: 'home' });
   if (screen.name === 'add') return <AddMedicine elderId={screen.elderId} onDone={home} toast={toast} />;
+  if (screen.name === 'day') return <ElderDay elderId={screen.elderId} onBack={home} toast={toast} />;
   if (screen.name === 'verify') return <Verify elderId={screen.elderId} regimenId={screen.regimenId} onDone={home} toast={toast} />;
   return <Home toast={toast} go={setScreen} />;
 }
 
-function ElderCard({ elder, now, meds, onOpen }) {
-  const group = nextDoseGroup(elder, now, meds);
+const STATUS_ICON_COLOUR = { '': '#0B2F8A', ok: '#17633F', warn: '#7A4A00', bad: '#8E1B16' };
+
+function ElderCard({ elder, now, meds, doses, onOpen }) {
+  const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
+  const head = headline(elder, now, meds, doses); // what just happened, if anything
   return (
     <button type="button" className="card tap" style={{ padding: 16, gap: 14 }} onClick={onOpen}>
       <div className="row" style={{ gap: 14 }}>
@@ -52,7 +58,12 @@ function ElderCard({ elder, now, meds, onOpen }) {
         </div>
         <Icon name="chevron" size={24} color="#425A80" width={2} />
       </div>
-      {next && (
+      {head ? (
+        <div className={'status ' + head.cls}>
+          <Icon name={head.icon} size={22} color={STATUS_ICON_COLOUR[head.cls]} width={2.6} />
+          <span>{head.text}</span>
+        </div>
+      ) : next && (
         <div className="status">
           <Icon name="clock" size={22} color="#0B2F8A" width={2.6} />
           <span>{group.map((g) => g.med.short).join(' + ')} · {untilText(next.at - now)}</span>
@@ -117,7 +128,7 @@ function Home({ toast, go }) {
         </div>
 
         {state.elders.map((e) => (
-          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} onOpen={() => later(5)} />
+          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} doses={state.doses} onOpen={() => go({ name: 'day', elderId: e.id })} />
         ))}
 
         <button type="button" className="add-btn" onClick={() => go({ name: 'add' })}>

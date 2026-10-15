@@ -12,6 +12,8 @@ const PATHS = {
   sliders: 'M4 7h9M17 7h3M4 17h3M11 17h9M15 5v4M9 15v4',
   phone: 'M5 4h4l2 5-2.5 1.5a11 11 0 005 5L15 13l5 2v4a2 2 0 01-2 2A16 16 0 013 6a2 2 0 012-2z',
   speaker: 'M4 10v4h4l5 4V6L8 10H4zM16 9a4 4 0 010 6',
+  mic: 'M12 3a3 3 0 00-3 3v6a3 3 0 006 0V6a3 3 0 00-3-3zM5 11a7 7 0 0014 0M12 18v3',
+  forward: 'M5 5l7 7-7 7M13 5l7 7-7 7',
 };
 
 export default function Icon({ name, size = 22, color = 'currentColor', width = 2.4 }) {

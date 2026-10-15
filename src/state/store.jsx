@@ -57,10 +57,18 @@ function reducer(state, action) {
       }));
       return logEntry(s, { elderId: action.elderId, by: action.by, kind: 'setup', text: `${action.medName} যাচাই করে চালু করা হয়েছে` });
     }
+    // What the elder answered for one or more doses due at the same time. Also writes the caregiver timeline.
+    case 'dose/record': {
+      const doses = { ...state.doses };
+      const until = action.untilIn ? state.clock + action.untilIn : undefined; // "not yet": ask again later
+      for (const k of action.keys) doses[k] = { status: action.status, at: state.clock, how: action.how, until };
+      return logEntry({ ...state, doses }, { elderId: action.elderId, by: action.elderId, kind: 'dose', status: action.status, text: action.text });
+    }
+
     case 'regimen/discard':
       return updateElder(state, action.elderId, (e) => ({ ...e, regimens: e.regimens.filter((r) => r.id !== action.regimenId) }));
     case 'reset':
-      return makeSeed();
+      return { ...makeSeed(), epoch: Date.now() }; // a new epoch tells the phones to drop what they were doing
     default:
       return state;
   }
