@@ -1,0 +1,11 @@
+# Never upload secrets or local-only files to Vercel
+.env
+.env.*
+!.env.example
+node_modules
+dist
+.claude
+# Large originals: the app uses the copies in public/img
+Assets
+reference
+*.py

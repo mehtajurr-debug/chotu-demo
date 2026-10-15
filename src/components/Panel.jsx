@@ -5,7 +5,7 @@ import { ALERT_AFTER, REPEAT_EVERY, dueGroup, nextDose, waitingSince } from '../
 import { ESCALATE_EVERY, recipients, topLevel } from '../state/escalation.js';
 import { enTime } from '../lib/time.js';
 import { UTTERANCES, clipCount, sayAsElder, soundUnlocked } from '../lib/voice.js';
-import { disableMic, enableMic, voiceStatus } from '../lib/mic.js';
+import { checkPasscode, disableMic, enableMic, voiceStatus } from '../lib/mic.js';
 import { useEffect, useState } from 'react';
 import { TOUR } from '../data/tour.js';
 
@@ -47,8 +47,11 @@ const INTENT_EN = {
 
 function MicControl({ micOn, setMicOn, lastHeard }) {
   const [ready, setReady] = useState(null); // does the server have an API key?
+  const [needPass, setNeedPass] = useState(false); // hosted version: the microphone needs a passcode
+  const [passOk, setPassOk] = useState(false);
+  const [pass, setPass] = useState('');
   const [err, setErr] = useState('');
-  useEffect(() => { voiceStatus().then((s) => setReady(s.voiceReady)); }, []);
+  useEffect(() => { voiceStatus().then((s) => { setReady(s.voiceReady); setNeedPass(Boolean(s.passcodeRequired)); }); }, []);
 
   // Refresh the small status line (clips ready, sound enabled) every few seconds.
   const [, tick] = useState(0);
@@ -57,6 +60,10 @@ function MicControl({ micOn, setMicOn, lastHeard }) {
   const toggle = async () => {
     setErr('');
     if (micOn) { disableMic(); setMicOn(false); return; }
+    if (needPass && !passOk) {
+      if (!(await checkPasscode(pass.trim()))) { setErr('That passcode is not right. The chips work without it.'); return; }
+      setPassOk(true);
+    }
     if (!window.isSecureContext) { setErr('The microphone only works on http://localhost:5173 (start-demo.bat), not on another address.'); return; }
     try { await enableMic(); setMicOn(true); } catch (e) {
       const name = e?.name || '';
@@ -74,6 +81,10 @@ function MicControl({ micOn, setMicOn, lastHeard }) {
       <p className="note" style={{ marginBottom: 6 }}>
         Chotu’s voice: {clipCount()} clips ready. {soundUnlocked() ? 'Sound is on.' : 'Click anywhere on the page once to allow sound.'}
       </p>
+      {needPass && !passOk && !micOn && (
+        <input id="mic-pass" className="tour-pick" style={{ marginBottom: 6 }} type="password" value={pass} placeholder="Microphone passcode"
+          aria-label="Microphone passcode" onChange={(e) => setPass(e.target.value)} />
+      )}
       <button type="button" className={'btn' + (micOn ? ' pri' : '')} style={{ width: '100%' }} disabled={ready === false && !micOn} onClick={toggle}>
         {micOn ? '● Microphone on (click to turn off)' : 'Turn on microphone'}
       </button>

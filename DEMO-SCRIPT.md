@@ -1,5 +1,12 @@
 # Chotu: 3-minute demo script
 
+## Online version (to share)
+- Link: **https://chotu-demo.vercel.app**. It works on any computer or phone, even when your laptop is off.
+- Everything works without signing in, including the live microphone (in Chrome, allow the microphone when asked).
+- The microphone uses your free Gemini allowance, so if many people try it on one day it can run out; the chips always keep working. A passcode can be switched back on by adding `MIC_PASSCODE` in the Vercel project settings and republishing.
+- Each visitor gets their own copy of the demo in their own browser; **Reset demo** starts it fresh.
+- After changes on your laptop, the online version is updated with: `npx.cmd vercel deploy --prod` (Claude can run it for you).
+
 ## Practising every workflow
 The presenter panel starts with a **Guided tour** (17 workflows: setup, reminders, safety, health check-in, privacy, dashboard, summary, live voice). Pick one, click **Start this workflow** (it sets the clock, elder and caregiver for you) and tick the steps as you go. **Next workflow** moves on. Use it to rehearse; on stage, follow the script below.
 

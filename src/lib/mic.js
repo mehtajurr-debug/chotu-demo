@@ -70,10 +70,24 @@ export function recordAnswer({ maxMs = 8000, silenceMs = 1300, startTimeoutMs = 
 }
 
 /** Send the clip to our server. Resolves { intent, confidence, transcript } or throws with a readable message. */
+// Microphone passcode for the hosted version (kept for this browser tab only).
+const PASS_KEY = 'chotu-mic-pass';
+const getPass = () => { try { return sessionStorage.getItem(PASS_KEY) || ''; } catch { return ''; } };
+
+/** Check a passcode with the server; remembers it for this tab when it is right. */
+export async function checkPasscode(code) {
+  const r = await fetch('/api/understand', {
+    method: 'POST', headers: { 'Content-Type': 'application/json', 'x-passcode': code }, body: JSON.stringify({ check: true }),
+  });
+  if (!r.ok) return false;
+  try { sessionStorage.setItem(PASS_KEY, code); } catch { /* not remembered */ }
+  return true;
+}
+
 export async function understandClip(wav, context) {
   const r = await fetch('/api/understand', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 'Content-Type': 'application/json', 'x-passcode': getPass() },
     body: JSON.stringify({ audio: wav, mimeType: 'audio/wav', context }),
   });
   const data = await r.json().catch(() => ({}));

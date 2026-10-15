@@ -142,6 +142,12 @@ async function askModel(model, { audio, mimeType = 'audio/wav', context = 'remin
 /** Vercel-style handler: (req, res). req.body is the parsed JSON. */
 export default async function handler(req, res) {
   if (req.method !== 'POST') return res.status(405).json({ error: 'POST only' });
+  // On the hosted version only people with the passcode can use the live microphone (it spends the API quota).
+  const pass = process.env.MIC_PASSCODE;
+  if (pass && String(req.headers['x-passcode'] || '').trim().toLowerCase() !== pass.trim().toLowerCase()) {
+    return res.status(401).json({ error: 'Wrong or missing microphone passcode.' });
+  }
+  if (req.body?.check) return res.status(200).json({ ok: true }); // passcode check only
   const key = process.env.GEMINI_API_KEY;
   if (!key) return res.status(500).json({ error: 'No GEMINI_API_KEY on the server. Add it to the .env file.' });
   const { audio } = req.body || {};
