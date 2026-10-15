@@ -33,10 +33,10 @@ export function Avatar({ person, size }) {
   return <div className="av-init" style={{ width: size, height: size, fontSize: size * 0.42 }}>{person.name.slice(0, 1)}</div>;
 }
 
-export function MedThumb({ med, size }) {
+export function MedThumb({ src, alt = '', size }) {
   return (
     <div className="thumb" style={{ width: size, height: size }}>
-      <img src={med.image} alt={med.name} />
+      {src ? <img src={src} alt={alt} /> : <span style={{ margin: 'auto', fontSize: 13, color: '#425A80' }}>ছবি নেই</span>}
     </div>
   );
 }

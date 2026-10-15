@@ -1,8 +1,17 @@
 // Turns a regimen ("morning, after meal") into clock times using the elder's meal times.
 import MEDICINES from '../data/medicines.json';
-import { DAY, dayOf, hhmmToMin } from './time.js';
+import { DAY, bn, dayOf, hhmmToMin } from './time.js';
 
-export const MED_BY_ID = Object.fromEntries(MEDICINES.map((m) => [m.id, m]));
+export const LIBRARY = MEDICINES;
+
+/** Library medicines plus any the caregiver added by hand. */
+export function medMap(state) {
+  const all = [...MEDICINES, ...(state.customMeds || [])];
+  return Object.fromEntries(all.map((m) => [m.id, m]));
+}
+
+/** The photo to show for a regimen: the caregiver's own photo if they uploaded one, else the library photo. */
+export const medImage = (regimen, med) => regimen.photo || med?.image || null;
 
 export const SLOTS = {
   morning: { meal: 'breakfast', bn: 'সকাল', en: 'Morning' },
@@ -10,10 +19,22 @@ export const SLOTS = {
   night: { meal: 'dinner', bn: 'রাত', en: 'Night' },
 };
 
+export const MEAL_NAMES = { breakfast: 'সকালের খাবার', lunch: 'দুপুরের খাবার', dinner: 'রাতের খাবার' };
+
 export const MEAL_TIMING = {
   before: { bn: 'খাবারের আগে', offset: -30 },
   after: { bn: 'খাবারের পরে', offset: 15 },
 };
+
+const FORM_BN = { tablet: 'ট্যাবলেট', capsule: 'ক্যাপসুল', injection: 'ইনজেকশন' };
+const AMOUNT_BN = { 0.5: 'আধা', 1: '১টি', 2: '২টি' };
+/** 1, 'tablet' -> "১টি ট্যাবলেট" */
+export const doseText = (amount, form) => `${AMOUNT_BN[amount] || bn(amount)} ${FORM_BN[form] || 'ট্যাবলেট'}`;
+
+export function durationText(d) {
+  if (!d || d.type === 'ongoing') return 'চলতে থাকবে';
+  return `${bn(d.count)} ${d.type === 'weeks' ? 'সপ্তাহ' : 'দিন'}`;
+}
 
 /** Clock minute-of-day for one slot of a regimen. */
 export function slotTime(elder, regimen, slot) {
@@ -31,23 +52,30 @@ export function activeOnDay(regimen, day) {
 }
 
 /** All scheduled doses for an elder on one demo day, sorted by time. As-needed medicines have none. */
-export function dosesForDay(elder, day) {
+export function dosesForDay(elder, day, meds) {
   const out = [];
   for (const r of elder.regimens) {
     if (r.asNeeded || !activeOnDay(r, day)) continue;
     for (const slot of r.slots) {
       const at = day * DAY + slotTime(elder, r, slot);
-      out.push({ key: `${r.id}@${day}@${slot}`, regimen: r, med: MED_BY_ID[r.medId], slot, at });
+      out.push({ key: `${r.id}@${day}@${slot}`, regimen: r, med: meds[r.medId], slot, at });
     }
   }
   return out.sort((a, b) => a.at - b.at);
 }
 
+/** All doses due at the same time as the next dose (e.g. two medicines at night). */
+export function nextDoseGroup(elder, now, meds) {
+  const first = nextDose(elder, now, meds);
+  if (!first) return [];
+  return dosesForDay(elder, dayOf(first.at), meds).filter((x) => x.at === first.at);
+}
+
 /** The next scheduled dose at or after `now` (looks ahead two days). */
-export function nextDose(elder, now) {
+export function nextDose(elder, now, meds) {
   const d = dayOf(now);
   for (const day of [d, d + 1, d + 2]) {
-    const hit = dosesForDay(elder, day).find((x) => x.at >= now);
+    const hit = dosesForDay(elder, day, meds).find((x) => x.at >= now);
     if (hit) return hit;
   }
   return null;

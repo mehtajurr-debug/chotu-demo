@@ -31,8 +31,9 @@ export default function App() {
   useFitScale();
   const { state } = useStore();
   const [tab, setTab] = useState('e'); // narrow screens show one phone at a time
+  const [cgScreen, setCgScreen] = useState('home');
   const elder = state.elders.find((e) => e.id === state.elderOnPhone);
-  const carer = state.caregivers.find((c) => c.primary);
+  const carer = state.caregivers.find((c) => c.id === state.caregiverOnPhone);
 
   return (
     <>
@@ -45,8 +46,8 @@ export default function App() {
         <Phone label={`Elder phone · ${elder.nameEn}`} status="waiting" hidden={tab !== 'e'}>
           {(toast) => <ElderPhone toast={toast} />}
         </Phone>
-        <Phone label={`Caregiver phone · ${carer.nameEn}`} status="home" hidden={tab !== 'c'}>
-          {(toast) => <CaregiverPhone toast={toast} />}
+        <Phone label={`Caregiver phone · ${carer.nameEn}`} status={cgScreen} hidden={tab !== 'c'}>
+          {(toast) => <CaregiverPhone toast={toast} onScreen={setCgScreen} />}
         </Phone>
       </main>
     </>

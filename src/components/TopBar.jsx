@@ -27,6 +27,19 @@ export default function TopBar() {
         </div>
       </div>
 
+      <div className="group" role="group" aria-label="Caregiver phone held by">
+        <span className="lbl">Caregiver</span>
+        <div className="seg">
+          {state.caregivers.map((c) => (
+            <button key={c.id} type="button" aria-pressed={state.caregiverOnPhone === c.id}
+              onClick={() => dispatch({ type: 'caregiver/use', caregiverId: c.id })}>
+              {c.photo ? <img src={c.photo} alt="" width="32" height="32" /> : <span className="seg-init">{c.nameEn[0]}</span>}
+              {c.nameEn}{c.primary ? ' ★' : ''}
+            </button>
+          ))}
+        </div>
+      </div>
+
       <div className="spacer" />
 
       <div className="group" role="group" aria-label="Demo clock">
