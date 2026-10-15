@@ -9,7 +9,8 @@ import Icon from '../components/Icon.jsx';
 import AddMedicine from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
 import ElderDay from './ElderDay.jsx';
-import { headline } from './status.js';
+import { STATUS_LOOK, headline, todayDoses } from './status.js';
+import { SLOTS } from '../lib/schedule.js';
 import { AlertBanner, AlertDetail, AlertsList, unseenAlerts } from './Alerts.jsx';
 
 function untilText(mins) {
@@ -39,7 +40,7 @@ export default function CaregiverPhone({ toast, onScreen }) {
 
   let view;
   if (screen.name === 'add') view = <AddMedicine elderId={screen.elderId} onDone={home} toast={toast} />;
-  else if (screen.name === 'day') view = <ElderDay elderId={screen.elderId} onBack={home} toast={toast} />;
+  else if (screen.name === 'day') view = <ElderDay elderId={screen.elderId} onBack={home} toast={toast} go={setScreen} openAlert={openAlert} />;
   else if (screen.name === 'verify') view = <Verify elderId={screen.elderId} regimenId={screen.regimenId} onDone={home} toast={toast} />;
   else if (screen.name === 'alerts') view = <AlertsList onOpen={openAlert} onBack={home} />;
   else if (screen.name === 'alert') view = <AlertDetail id={screen.id} onBack={() => setScreen({ name: 'alerts' })} toast={toast} />;
@@ -85,7 +86,30 @@ function ElderCard({ elder, now, meds, doses, alerts, caregivers, onOpen }) {
           <span>{group.map((g) => g.med.short).join(' + ')} · {untilText(next.at - now)}</span>
         </div>
       )}
+      <DayPills elder={elder} now={now} meds={meds} doses={doses} />
     </button>
+  );
+}
+
+/** Today at a glance: one small pill per dose time, coloured by what happened. */
+function DayPills({ elder, now, meds, doses }) {
+  const today = todayDoses(elder, now, meds, doses);
+  if (!today.length) return null;
+  // One pill per time of day; the worst status wins if two medicines share a time.
+  const rank = { missed: 6, help: 5, unsure: 4, due: 3, snoozed: 2, upcoming: 1, taken: 0 };
+  const byTime = new Map();
+  for (const d of today) {
+    const cur = byTime.get(d.at);
+    if (!cur || rank[d.status] > rank[cur.status]) byTime.set(d.at, d);
+  }
+  return (
+    <div className="day-pills" aria-label="আজকের ওষুধ">
+      {[...byTime.values()].map((d) => (
+        <span key={d.at} className={'dp ' + (d.status === 'upcoming' ? 'up' : STATUS_LOOK[d.status].cls)}>
+          {d.status === 'taken' && <Icon name="check" size={13} width={3} />}{SLOTS[d.slot].bn}
+        </span>
+      ))}
+    </div>
   );
 }
 

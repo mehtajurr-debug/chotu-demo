@@ -280,7 +280,7 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
 }
 
 /** Meal times live on the elder's profile; they turn "after breakfast" into a clock time. */
-function MealTimes({ elder, editing, onEdit, onChange }) {
+export function MealTimes({ elder, editing, onEdit, onChange }) {
   return (
     <div className="card" style={{ padding: 12, gap: 8 }}>
       <div className="row">

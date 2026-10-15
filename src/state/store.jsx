@@ -86,6 +86,17 @@ function reducer(state, action) {
       return { ...state, alerts: state.alerts.map((x) => (x.id === action.id && !x.seenBy.includes(action.by) ? { ...x, seenBy: [...x.seenBy, action.by] } : x)) };
     case 'alert/told': // the elder phone has spoken about this alert
       return { ...state, alerts: state.alerts.map((x) => (x.id === action.id ? { ...x, [action.field]: true } : x)) };
+    // Shared notes between caregivers (also shown on the elder's timeline)
+    case 'note/add': {
+      const note = { id: `n${Date.now()}`, elderId: action.elderId, by: action.by, at: state.clock, text: action.text };
+      return logEntry({ ...state, notes: [...state.notes, note] }, { elderId: action.elderId, by: action.by, kind: 'note', text: `নোট: ${action.text}` });
+    }
+    // Who is told first when something goes wrong (primary caregiver only)
+    case 'elder/alertOrder':
+      if (!isPrimary(state, action.by)) return state;
+      return updateElder(state, action.elderId, (e) => ({ ...e, alertOrder: action.order }));
+    case 'elder/sleep':
+      return updateElder(state, action.elderId, (e) => ({ ...e, sleep: action.sleep }));
     case 'elder/unreachable':
       return { ...state, unreachable: { ...state.unreachable, [action.elderId]: !state.unreachable?.[action.elderId] } };
 

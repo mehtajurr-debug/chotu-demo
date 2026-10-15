@@ -15,7 +15,7 @@ const YESTERDAY = [
 
 export function makeSeed() {
   return {
-    version: 5,
+    version: 6,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -71,6 +71,10 @@ export function makeSeed() {
     // Presenter toggle: this elder's phone can't be reached (changes the alert wording)
     unreachable: { baba: false, ma: false },
     // Shared notes between caregivers, per elder.
-    notes: [],
+    notes: [
+      { id: 'n1', elderId: 'baba', by: 'ruma', at: Y(19, 40), text: 'বৃহস্পতিবার বিকেলে বাবার ডাক্তারের অ্যাপয়েন্টমেন্ট। আমি নিয়ে যাব।' },
+      { id: 'n2', elderId: 'baba', by: 'shumon', at: Y(21, 30), text: 'নতুন ওষুধের প্যাকেট আলমারির দ্বিতীয় তাকে রাখা আছে।' },
+      { id: 'n3', elderId: 'ma', by: 'shumon', at: Y(20, 10), text: 'মা আজ বিকেলে পার্কে হাঁটতে গিয়েছিলেন, ভালো ছিলেন।' },
+    ],
   };
 }
