@@ -1,0 +1,43 @@
+{
+  "elders": {
+    "baba": "বাবা",
+    "ma": "মা"
+  },
+  "lines": [
+    { "id": "welcome", "when": "First screen on the elder phone", "text": "আমি ছোটু। আমি আপনাকে ওষুধের সময় মনে করিয়ে দেব।" },
+
+    { "id": "reminder_morning", "per_elder": true, "when": "Dose due, morning slot", "text": "{name}, সকালের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।" },
+    { "id": "reminder_noon", "per_elder": true, "when": "Dose due, noon slot", "text": "{name}, দুপুরের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।" },
+    { "id": "reminder_night", "per_elder": true, "when": "Dose due, night slot", "text": "{name}, রাতের ওষুধ খাওয়ার সময় হয়েছে। ছবির ওষুধটি দেখে নিন।" },
+    { "id": "reminder_before_meal", "per_elder": true, "when": "Dose due, before-meal timing", "text": "{name}, খাবারের আগে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।" },
+    { "id": "reminder_after_meal", "per_elder": true, "when": "Dose due, after-meal timing", "text": "{name}, খাবার খাওয়া হলে এই ওষুধটি খেয়ে নিন। ছবির ওষুধটি দেখে নিন।" },
+
+    { "id": "repeat_1", "per_elder": true, "when": "No response at +10 min", "text": "{name}, ওষুধটি কি খেয়েছেন? নিচের একটি বোতাম চাপুন।" },
+    { "id": "repeat_2", "per_elder": true, "when": "No response at +20 min", "text": "{name}, ওষুধের সময় পেরিয়ে যাচ্ছে। দয়া করে একটি বোতাম চাপুন।" },
+    { "id": "no_response_family_told", "when": "No response at +30 min, caregiver alerted", "text": "আপনার উত্তর পাইনি, তাই আমি আপনার পরিবারকে জানাচ্ছি।" },
+
+    { "id": "ack_taken", "when": "Tap: খেয়েছি", "text": "ধন্যবাদ। ওষুধ খাওয়ার কথা লিখে রাখলাম।" },
+    { "id": "ack_not_yet", "when": "Tap: এখনও খাইনি", "text": "ঠিক আছে। একটু পরে আবার মনে করিয়ে দেব।" },
+    { "id": "ack_not_sure", "when": "Tap: মনে নেই (never says to take the medicine)", "text": "একটু অপেক্ষা করুন। আমি আপনার পরিবারকে জানাচ্ছি, যাতে তাঁরা আপনার সঙ্গে কথা বলতে পারেন।" },
+    { "id": "ack_help", "when": "Tap: সাহায্য চাই", "text": "ঠিক আছে। আমি এখনই আপনার পরিবারকে জানাচ্ছি।" },
+    { "id": "family_handling", "when": "A caregiver tapped 'I'm handling this'", "text": "আপনার পরিবারের একজন বিষয়টি দেখছেন।" },
+
+    { "id": "emergency_countdown", "when": "Emergency button tapped, 5-second countdown", "text": "জরুরি বার্তা পাঠানো হচ্ছে। ভুল হলে বাতিল বোতাম চাপুন।" },
+    { "id": "emergency_sent", "when": "Countdown finished, alert sent", "text": "আপনার পরিবারের সবাইকে জানানো হয়েছে।" },
+    { "id": "emergency_cancelled", "when": "Cancel tapped during countdown", "text": "জরুরি বার্তা বাতিল করা হয়েছে।" },
+
+    { "id": "sos_logged", "when": "As-needed dose logged within limits", "text": "ওষুধ খাওয়ার সময়টি লিখে রাখলাম।" },
+    { "id": "sos_too_soon", "when": "As-needed dose logged but gap/daily max exceeded", "text": "এই ওষুধ আগের বার খাওয়ার অল্প সময় পরেই নেওয়া হচ্ছে। আমি আপনার পরিবারকে জানিয়ে দিচ্ছি।" },
+
+    { "id": "confirm_taken", "when": "Voice reply unclear, confirm back before logging", "text": "আপনি কি বললেন, ওষুধ খেয়েছেন? হ্যাঁ বা না চাপুন।" },
+    { "id": "schedule_changed", "per_elder": true, "when": "Caregiver edited the live schedule", "text": "{name}, আপনার ওষুধের সময় বদলেছে। নতুন সময়ে আমি মনে করিয়ে দেব।" },
+
+    { "id": "checkin_feeling", "when": "Daily check-in", "text": "শরীর কেমন লাগছে আজ?" },
+    { "id": "checkin_walk", "when": "Daily check-in", "text": "আজ একটু হাঁটা হয়েছে?" },
+    { "id": "checkin_water", "when": "Daily check-in", "text": "আজ কি পর্যাপ্ত পানি খেয়েছেন?" },
+    { "id": "checkin_sleep", "when": "Daily check-in", "text": "রাতে কি ভালো ঘুম হয়েছিল?" },
+    { "id": "checkin_thanks", "when": "After a check-in answer", "text": "ধন্যবাদ, আপনার কথা লিখে রাখলাম।" },
+
+    { "id": "consent_intro", "when": "Consent screen", "text": "আমি আপনার ওষুধ খাওয়ার তথ্য আপনার পরিবারকে জানাব। জরুরি বার্তা সবসময় যাবে। আপনি কি রাজি?" }
+  ]
+}

@@ -1,0 +1,137 @@
+/* Layout: presenter bar on top, two phones side by side; one phone at a time on narrow screens.
+   Colour: pale blue ground, navy ink from the Chotu logo, one light-blue accent (from reference/prototype.html).
+   Type: Noto Sans Bengali for Bangla, Noto Sans for English. Phones stay light in dark mode, like real screens. */
+:root {
+  --bg: #EAF2FB; --surface: #FFFFFF; --ink: #10213F; --sub: #4A5F80; --line: #C3D8EF;
+  --accent: #0B2F8A; --on-accent: #FFFFFF; --soft: #D6E6F8; --frame: #10213F; --mid: #5B9BE0;
+  --warn-bg: #FCEBC8; --warn: #7A4A00; --shadow: 0 18px 40px rgba(16, 33, 63, .18);
+  --font: 'Noto Sans Bengali', 'Noto Sans', system-ui, sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0C1626; --surface: #142238; --ink: #E6EEF9; --sub: #9DB2CF; --line: #2A4262;
+    --accent: #8DBBF5; --on-accent: #0A1A33; --soft: #1D3252; --frame: #050B14;
+    --warn-bg: #3A2C0C; --warn: #F3CF86; --shadow: 0 18px 40px rgba(0, 0, 0, .5); color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0C1626; --surface: #142238; --ink: #E6EEF9; --sub: #9DB2CF; --line: #2A4262;
+  --accent: #8DBBF5; --on-accent: #0A1A33; --soft: #1D3252; --frame: #050B14;
+  --warn-bg: #3A2C0C; --warn: #F3CF86; --shadow: 0 18px 40px rgba(0, 0, 0, .5); color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--font); font-size: 15px; line-height: 1.5;
+  padding: 16px max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));
+}
+button { font-family: inherit; }
+:focus-visible { outline: 3px solid var(--mid); outline-offset: 2px; }
+
+/* ---------- presenter bar ---------- */
+.top {
+  max-width: 1240px; margin: 0 auto 16px; display: flex; align-items: center; gap: 12px 16px; flex-wrap: wrap;
+  background: var(--surface); border: 1px solid var(--line); border-radius: 20px; padding: 12px 16px;
+}
+.brand { display: flex; align-items: center; gap: 10px; }
+.brand img { width: 40px; height: 40px; border-radius: 50%; }
+.brand h1 { font-size: 20px; line-height: 1.2; margin: 0; font-weight: 700; }
+.tag { font-size: 12.5px; font-weight: 600; color: var(--warn); background: var(--warn-bg); padding: 3px 10px; border-radius: 12px; white-space: nowrap; }
+.spacer { flex: 1 1 0; }
+.group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.group > .lbl { font-size: 12px; font-weight: 700; color: var(--sub); text-transform: uppercase; letter-spacing: .05em; }
+.clock { display: flex; flex-direction: column; line-height: 1.2; min-width: 120px; }
+.clock b { font-size: 20px; font-variant-numeric: tabular-nums; }
+.clock span { font-size: 13px; color: var(--sub); font-weight: 600; }
+.btn {
+  border: 1.5px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 12px;
+  padding: 8px 12px; font-size: 14.5px; font-weight: 700; cursor: pointer; min-height: 44px;
+}
+.btn:hover { border-color: var(--mid); }
+.btn.pri { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.seg { display: inline-flex; border: 1.5px solid var(--line); border-radius: 14px; overflow: hidden; }
+.seg button {
+  display: flex; align-items: center; gap: 8px; border: 0; background: var(--surface); color: var(--ink);
+  padding: 5px 12px 5px 6px; font-size: 15px; font-weight: 700; cursor: pointer; min-height: 44px;
+}
+.seg button + button { border-left: 1.5px solid var(--line); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg img { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; }
+
+/* ---------- stage with two phones ---------- */
+.tabs { display: none; gap: 8px; max-width: 560px; margin: 0 auto 14px; }
+.tabs button { flex: 1; }
+.tabs button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.stage { max-width: 1100px; margin: 0 auto; display: flex; justify-content: center; gap: 48px; align-items: flex-start; }
+.pcol { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.cap { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 14px; flex-wrap: wrap; }
+.cap small { font-weight: 600; font-size: 12.5px; color: var(--sub); background: var(--soft); padding: 2px 9px; border-radius: 10px; }
+.pbox { width: calc(390px * var(--s, 1)); height: calc(844px * var(--s, 1)); position: relative; }
+.phone {
+  width: 390px; height: 844px; position: absolute; left: 0; top: 0; transform: scale(var(--s, 1)); transform-origin: top left;
+  border-radius: 36px; overflow: hidden; box-shadow: 0 0 0 7px var(--frame), var(--shadow); background: #E3EFFC;
+  color: #10213F; font-family: 'Noto Sans Bengali', 'Noto Sans', sans-serif; color-scheme: light;
+}
+@media (max-width: 900px) {
+  .tabs { display: flex; }
+  .pcol.hide { display: none; }
+}
+
+/* ---------- inside the phones (always light) ---------- */
+.scr { width: 390px; height: 844px; padding: 28px 20px 24px; display: flex; flex-direction: column; gap: 12px; overflow: hidden; }
+.scr.elder { background: #E3EFFC; }
+.scr.care { background: #F0F6FD; }
+.scr button { -webkit-tap-highlight-color: transparent; }
+.scr button:active { transform: scale(.98); }
+.row { display: flex; align-items: center; gap: 10px; }
+.grow { flex-grow: 1; }
+.av { border-radius: 50%; object-fit: cover; flex-shrink: 0; display: block; }
+.av-init { border-radius: 50%; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #CFE3F8; color: #0B2F8A; font-weight: 700; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 20px; background: #CFE3F8; color: #0B2F8A; font-size: 15px; font-weight: 700; white-space: nowrap; }
+.pill.white { background: #fff; }
+.card { background: #fff; border: 1.5px solid #A9CCF2; border-radius: 22px; padding: 14px; display: flex; flex-direction: column; gap: 12px; }
+.card.tap { cursor: pointer; text-align: left; font: inherit; color: inherit; width: 100%; }
+.card.tap:hover { border-color: #5B9BE0; }
+.card.soft { background: #CFE3F8; border-color: #CFE3F8; }
+.thumb { border-radius: 14px; background: #fff; border: 1px solid #A9CCF2; overflow: hidden; flex-shrink: 0; display: flex; }
+.thumb img { width: 100%; height: 100%; object-fit: contain; }
+.t-name { font-size: 26px; font-weight: 700; color: #0B2F8A; line-height: 1.4; }
+.t-sub { font-size: 16px; font-weight: 500; color: #425A80; line-height: 1.4; }
+.t-label { font-size: 14px; font-weight: 600; color: #425A80; line-height: 1.4; }
+.status { display: flex; align-items: center; gap: 10px; border-radius: 14px; padding: 10px 12px; font-size: 17px; font-weight: 600; line-height: 1.4; background: #CFE3F8; color: #0B2F8A; }
+.status.ok { background: #D9F0E3; color: #17633F; }
+.status.warn { background: #FCEBC8; color: #7A4A00; }
+.status.bad { background: #F9DEDC; color: #8E1B16; }
+.big-btn {
+  height: 62px; border-radius: 26px; display: flex; align-items: center; justify-content: center; gap: 10px;
+  font-size: 24px; font-weight: 700; cursor: pointer; padding: 0 16px; flex-shrink: 0; border: 2px solid;
+}
+.big-btn.sos { background: #B3261E; color: #fff; border-color: #B3261E; }
+.add-btn {
+  height: 56px; border-radius: 24px; background: #fff; color: #0B2F8A; border: 2px dashed #5B9BE0; display: flex;
+  align-items: center; justify-content: center; gap: 10px; font-size: 18px; font-weight: 700; cursor: pointer; flex-shrink: 0;
+}
+
+/* Chotu's face with soft listening rings */
+.face { position: relative; flex-shrink: 0; }
+.face .ring { position: absolute; border-radius: 50%; border: 3px solid #5B9BE0; animation: ring 2.4s ease-in-out infinite; }
+@keyframes ring { 0%, 100% { opacity: .2; } 50% { opacity: .6; } }
+
+/* Caregiver bottom navigation */
+.nav { margin: auto -20px -24px; background: #fff; border-top: 1.5px solid #A9CCF2; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); padding: 4px 8px 18px; flex-shrink: 0; }
+.nav button { border: 0; background: none; cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: 3px; padding: 8px 0 6px; min-height: 52px; font-size: 13px; font-weight: 500; color: #425A80; }
+.nav button .ic { width: 56px; height: 30px; border-radius: 15px; display: flex; align-items: center; justify-content: center; }
+.nav button[aria-current="page"] { font-weight: 700; color: #0B2F8A; }
+.nav button[aria-current="page"] .ic { background: #CFE3F8; }
+
+/* Overlays */
+.ov { position: absolute; inset: 0; pointer-events: none; }
+.toast {
+  position: absolute; left: 24px; right: 24px; bottom: 110px; background: #10213F; color: #fff; border-radius: 16px;
+  padding: 12px 14px; font-size: 15px; font-weight: 600; text-align: center; animation: drop .25s ease-out both;
+}
+@keyframes drop { from { opacity: 0; transform: translateY(-8px); } to { opacity: 1; transform: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .face .ring, .toast { animation: none; }
+}

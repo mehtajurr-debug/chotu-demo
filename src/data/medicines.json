@@ -1,0 +1,21 @@
+[
+  { "id": "angilock", "name": "Angilock Plus 50/12.5", "short": "Angilock Plus", "bn": "অ্যানজিলক প্লাস", "strength": "Losartan 50 mg + Hydrochlorothiazide 12.5 mg", "form": "tablet", "image": "/img/med/angilock.jpg" },
+  { "id": "bizoran", "name": "Bizoran 10/40", "short": "Bizoran", "bn": "বাইজোরান", "strength": "Amlodipine 10 mg + Olmesartan 40 mg", "form": "tablet", "image": "/img/med/bizoran.png" },
+  { "id": "calbo-d", "name": "Calbo-D", "short": "Calbo-D", "bn": "ক্যালবো-ডি", "strength": "Calcium + Vitamin D", "form": "tablet", "image": "/img/med/calbo-d.jpg" },
+  { "id": "camlodin", "name": "Camlodin Plus 25", "short": "Camlodin Plus", "bn": "ক্যামলোডিন প্লাস ২৫", "strength": "Amlodipine 5 mg + Atenolol 25 mg", "form": "tablet", "image": "/img/med/camlodin.png" },
+  { "id": "comet", "name": "Comet 500", "short": "Comet 500", "bn": "কমেট", "strength": "Metformin 500 mg", "form": "tablet", "image": "/img/med/comet.png" },
+  { "id": "comprid", "name": "Comprid XR 60", "short": "Comprid XR", "bn": "কমপ্রিড এক্সআর", "strength": "Gliclazide 60 mg", "form": "tablet", "image": "/img/med/comprid.jpg" },
+  { "id": "d-rise", "name": "D-Rise 40000", "short": "D-Rise", "bn": "ডি-রাইজ", "strength": "Cholecalciferol 40000 IU", "form": "capsule", "image": "/img/med/d-rise.jpg" },
+  { "id": "ecosprin", "name": "Ecosprin 75", "short": "Ecosprin 75", "bn": "ইকোস্প্রিন", "strength": "Aspirin 75 mg", "form": "tablet", "image": "/img/med/ecosprin.jpg" },
+  { "id": "flexi", "name": "Flexi", "short": "Flexi", "bn": "ফ্লেক্সি", "strength": "Aceclofenac 100 mg", "form": "tablet", "image": "/img/med/flexi.jpg" },
+  { "id": "jardian", "name": "Jardian 10", "short": "Jardian 10", "bn": "জার্ডিয়ান", "strength": "Empagliflozin 10 mg", "form": "tablet", "image": "/img/med/jardian.png" },
+  { "id": "linatab", "name": "Linatab E 5/10", "short": "Linatab E", "bn": "লিনাট্যাব ই", "strength": "Linagliptin 5 mg + Empagliflozin 10 mg", "form": "tablet", "image": "/img/med/linatab.jpg" },
+  { "id": "maxpro", "name": "Maxpro 20", "short": "Maxpro 20", "bn": "ম্যাক্সপ্রো", "strength": "Esomeprazole 20 mg", "form": "tablet", "image": "/img/med/maxpro.jpg" },
+  { "id": "mixtard", "name": "Mixtard 30", "short": "Mixtard 30", "bn": "মিক্সটার্ড", "strength": "Human insulin (injection)", "form": "injection", "image": "/img/med/mixtard.jpg" },
+  { "id": "napa-extra", "name": "Napa Extra", "short": "Napa Extra", "bn": "নাপা এক্সট্রা", "strength": "Paracetamol 500 mg + Caffeine 65 mg", "form": "tablet", "image": "/img/med/napa-extra.jpg" },
+  { "id": "naprosyn", "name": "Naprosyn 500", "short": "Naprosyn 500", "bn": "ন্যাপ্রোসিন", "strength": "Naproxen 500 mg", "form": "tablet", "image": "/img/med/naprosyn.jpg" },
+  { "id": "osartil", "name": "Osartil 50 Plus", "short": "Osartil Plus", "bn": "ওসারটিল প্লাস", "strength": "Losartan 50 mg + Hydrochlorothiazide 12.5 mg", "form": "tablet", "image": "/img/med/osartil.jpg" },
+  { "id": "rosuva", "name": "Rosuva 10", "short": "Rosuva 10", "bn": "রসুভা", "strength": "Rosuvastatin 10 mg", "form": "tablet", "image": "/img/med/rosuva.jpg" },
+  { "id": "sitagil", "name": "Sitagil 100", "short": "Sitagil 100", "bn": "সিটাগিল", "strength": "Sitagliptin 100 mg", "form": "tablet", "image": "/img/med/sitagil.png" },
+  { "id": "tenoren", "name": "Tenoren 100", "short": "Tenoren 100", "bn": "টেনোরেন", "strength": "Atenolol 100 mg", "form": "tablet", "image": "/img/med/tenoren.png" }
+]
