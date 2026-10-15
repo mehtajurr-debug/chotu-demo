@@ -1,69 +1,99 @@
 import { useEffect, useState } from 'react';
 import { useStore } from './state/store.jsx';
-import TopBar from './components/TopBar.jsx';
+import Header from './components/Header.jsx';
 import Phone from './components/Phone.jsx';
 import Panel from './components/Panel.jsx';
+import Tutorial from './components/Tutorial.jsx';
 import ElderPhone from './elder/ElderPhone.jsx';
 import CaregiverPhone from './caregiver/CaregiverPhone.jsx';
+import { enTime } from './lib/time.js';
 
-// Shrink both phones so they fit the window (like the prototype).
-function useFitScale() {
+const PHONE_W = 390;
+const PHONE_H = 874; // 30 px status bar + 844 px screen
+const DRAWER_W = 380;
+
+const store = {
+  get: (k, d) => { try { return localStorage.getItem(k) ?? d; } catch { return d; } },
+  set: (k, v) => { try { localStorage.setItem(k, v); } catch { /* not saved */ } },
+};
+
+// Scale the phones to the space left by the header, the chosen view and an open drawer.
+function useFitScale(view, drawerOpen) {
   useEffect(() => {
     const fit = () => {
       const narrow = innerWidth <= 900;
-      const panelBeside = innerWidth > 1240; // the presenter panel sits to the right of the phones
-      const stage = document.querySelector('.stage');
-      const top = stage ? stage.getBoundingClientRect().top + scrollY : 150;
-      const availH = innerHeight - top - 56; // room for the caption above each phone and a margin below
-      let s = Math.min(1, availH / 844);
-      const availW = innerWidth - 120 - (panelBeside ? 336 : 0);
-      s = narrow ? Math.min(s, (innerWidth - 40) / 390) : Math.min(s, availW / 2 / 390);
-      document.documentElement.style.setProperty('--s', Math.max(0.42, s).toFixed(3));
+      const hdr = document.querySelector('.hdr')?.offsetHeight || 64;
+      const availH = innerHeight - hdr - 24 - 44; // top margin + label under the phone
+      const count = view === 'both' && !narrow ? 2 : 1;
+      const side = drawerOpen && innerWidth > 1100 ? DRAWER_W : 0;
+      const availW = innerWidth - 40 - side - (count === 2 ? 56 : 0);
+      const s = Math.max(0.42, Math.min(1.25, availH / PHONE_H, availW / count / PHONE_W));
+      document.documentElement.style.setProperty('--s', s.toFixed(3));
     };
     fit();
-    // The top bar can wrap onto two lines, so refit whenever its height changes too.
     const ro = new ResizeObserver(fit);
-    const bar = document.querySelector('.top');
-    if (bar) ro.observe(bar);
+    const hdr = document.querySelector('.hdr');
+    if (hdr) ro.observe(hdr);
     addEventListener('resize', fit);
     return () => { ro.disconnect(); removeEventListener('resize', fit); };
-  }, []);
+  }, [view, drawerOpen]);
 }
 
-const ELDER_LABEL = {
-  idle: 'waiting', speak: 'Chotu is speaking', listen: 'listening', readback: 'reading back', logged: 'logged, 5 s to undo',
-  buttons: 'buttons shown', done: 'done', countdown: 'emergency countdown', sent: 'emergency sent',
-  'ci-speak': 'check-in: Chotu asks', 'ci-listen': 'check-in: listening',
-};
+function useNarrow() {
+  const [narrow, setNarrow] = useState(() => innerWidth <= 900);
+  useEffect(() => {
+    const on = () => setNarrow(innerWidth <= 900);
+    addEventListener('resize', on);
+    return () => removeEventListener('resize', on);
+  }, []);
+  return narrow;
+}
 
 export default function App() {
-  useFitScale();
   const { state } = useStore();
-  const [tab, setTab] = useState('e'); // narrow screens show one phone at a time
-  const [cgScreen, setCgScreen] = useState('home');
+  const narrow = useNarrow();
+  const [view, setViewRaw] = useState(() => store.get('chotu-view', 'both')); // elder | care | both
+  const shown = narrow && view === 'both' ? 'elder' : view; // a narrow screen fits one phone
+  const [drawerOpen, setDrawerOpen] = useState(false);
+  const [tutorial, setTutorial] = useState(() => store.get('chotu-tutorial-seen', '') !== '1');
   const [elderPhase, setElderPhase] = useState('idle');
-  const [micOn, setMicOn] = useState(false); // live microphone, switched on from the presenter panel
+  const [micOn, setMicOn] = useState(false); // live microphone, switched on in Demo settings
   const [lastHeard, setLastHeard] = useState(null); // what the server understood last time
+  useFitScale(shown, drawerOpen);
+
+  const setView = (v) => { setViewRaw(v); store.set('chotu-view', v); };
+  const closeTutorial = () => { setTutorial(false); store.set('chotu-tutorial-seen', '1'); };
   const elder = state.elders.find((e) => e.id === state.elderOnPhone);
   const carer = state.caregivers.find((c) => c.id === state.caregiverOnPhone);
+  const time = enTime(state.clock).split(' ')[0]; // shown in the phones' status bar
 
   return (
     <>
-      <TopBar />
-      <div className="tabs">
-        <button className="btn" type="button" aria-pressed={tab === 'e'} onClick={() => setTab('e')}>Elder phone</button>
-        <button className="btn" type="button" aria-pressed={tab === 'c'} onClick={() => setTab('c')}>Caregiver phone</button>
-      </div>
-      <main className="stage">
-        <Phone label={`Elder phone · ${elder.nameEn}`} status={ELDER_LABEL[elderPhase]} hidden={tab !== 'e'}>
+      <Header view={shown} setView={setView} narrow={narrow} drawerOpen={drawerOpen} onSettings={() => setDrawerOpen((o) => !o)} />
+      <main className={'stage view-' + shown + (drawerOpen ? ' with-drawer' : '')}>
+        <Phone label={`${elder.gen} ফোন`} time={time} phase={elderPhase} hidden={shown === 'care'} tint="#E3EFFC">
           {/* A new key (other elder, or Reset) starts the elder phone fresh. */}
           {(toast) => <ElderPhone key={`${elder.id}-${state.epoch || 0}`} toast={toast} onPhase={setElderPhase} micOn={micOn} onHeard={setLastHeard} />}
         </Phone>
-        <Phone label={`Caregiver phone · ${carer.nameEn}`} status={cgScreen} hidden={tab !== 'c'}>
-          {(toast) => <CaregiverPhone key={state.epoch || 0} toast={toast} onScreen={setCgScreen} />}
+        <Phone label={`${carer.gen} ফোন (${carer.relation}${carer.primary ? ', প্রধান যত্নকারী' : ''})`} time={time} hidden={shown === 'elder'} tint="#F0F6FD">
+          {(toast) => <CaregiverPhone key={state.epoch || 0} toast={toast} />}
         </Phone>
-        <Panel phase={elderPhase} micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} />
       </main>
+
+      <aside className={'drawer' + (drawerOpen ? ' open' : '')} aria-label="Demo settings" aria-hidden={!drawerOpen}>
+        <div className="drawer-head">
+          <div>
+            <b>Demo settings</b>
+            <small>Presenter controls. Not part of the app.</small>
+          </div>
+          <button type="button" className="icon-close" aria-label="Close demo settings" onClick={() => setDrawerOpen(false)}>
+            <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
+          </button>
+        </div>
+        {drawerOpen && <Panel phase={elderPhase} micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} onTutorial={() => { setDrawerOpen(false); setTutorial(true); }} />}
+      </aside>
+
+      {tutorial && <Tutorial onClose={closeTutorial} />}
     </>
   );
 }

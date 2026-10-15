@@ -39,6 +39,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const [heard, setHeard] = useState('');
   const [undoOn, setUndoOn] = useState(false); // the 5-second 'say না to undo' bar is running
   const [active, setActive] = useState([]); // the doses this conversation is about
+  const [zoom, setZoom] = useState(null); // medicine photo shown full screen: { src, name, sub }
 
   // Timer callbacks outlive renders, so they read the latest values through refs.
   const latest = useRef({});
@@ -395,7 +396,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   if (state.showConsentFor === elder.id) return <Consent elder={elder} />;
   if (phase === 'countdown') return <Countdown n={count} onCancel={() => cancelEmergency('button')} />;
   if (phase === 'sent') return <Sent elder={elder} alert={emergencyAlert} toast={toast} onBack={() => { clearAll(); go('idle'); }} />;
-  if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} />;
+  const zoomEl = zoom && <MedZoom {...zoom} onClose={() => setZoom(null)} />;
+  if (phase === 'idle') return <>{<Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} onZoom={setZoom} />}{zoomEl}</>;
 
   const listening = ['listen', 'readback', 'logged', 'buttons', 'ci-listen'].includes(phase);
   const inCheckin = phase === 'ci-speak' || phase === 'ci-listen';
@@ -454,7 +456,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
       {active.length > 0 && <div className="card" style={{ padding: compact ? 10 : 14, gap: 10 }}>
         {active.map((d) => (
           <div key={d.key} className="row" style={{ gap: 14 }}>
-            <MedThumb src={medImage(d.regimen, d.med)} alt={d.med.name} size={compact ? 64 : 112} />
+            <MedThumb src={medImage(d.regimen, d.med)} alt={d.med.name} size={compact ? 64 : 112}
+              onClick={() => setZoom({ src: medImage(d.regimen, d.med), name: d.med.short, sub: doseText(d.regimen.amount, d.med.form) })} />
             <div>
               <div style={{ fontSize: compact ? 21 : 26, fontWeight: 700, lineHeight: 1.3 }}>{d.med.short}</div>
               <div className="t-sub" style={{ fontSize: 17 }}>{doseText(d.regimen.amount, d.med.form)}</div>
@@ -486,6 +489,19 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         <Icon name="alert" size={27} />
         জরুরি অবস্থা
       </button>
+      {zoomEl}
+    </div>
+  );
+}
+
+/** A medicine photo shown as big as the screen allows, so the elder can recognise the packet. */
+function MedZoom({ src, name, sub, onClose }) {
+  return (
+    <div className="medzoom" role="dialog" aria-modal="true" aria-label={name} onClick={onClose}>
+      <div className="pic"><img src={src} alt={name} /></div>
+      <div className="name">{name}</div>
+      {sub && <div className="sub">{sub}</div>}
+      <button type="button" className="close" onClick={onClose}>বন্ধ করুন</button>
     </div>
   );
 }
@@ -607,7 +623,7 @@ function Offline({ elder }) {
 }
 
 /** Resting screen: greeting, Chotu's face, next medicine. */
-function Idle({ elder, now, meds, doses, onEmergency, onPrn }) {
+function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom }) {
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
@@ -643,7 +659,8 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn }) {
       {prn.map((r) => (
         <div key={r.id} className="card" style={{ padding: 10, marginTop: 'auto' }}>
           <div className="row" style={{ gap: 12 }}>
-            <MedThumb src={medImage(r, meds[r.medId])} alt={meds[r.medId]?.name} size={56} />
+            <MedThumb src={medImage(r, meds[r.medId])} alt={meds[r.medId]?.name} size={56}
+              onClick={() => onZoom({ src: medImage(r, meds[r.medId]), name: meds[r.medId]?.short, sub: 'প্রয়োজনের ওষুধ' })} />
             <div className="grow">
               <div className="t-label">প্রয়োজনের ওষুধ</div>
               <div style={{ fontSize: 19, fontWeight: 700 }}>{meds[r.medId]?.short}</div>
@@ -661,7 +678,8 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn }) {
           </div>
           {group.map((g) => (
             <div key={g.key} className="row" style={{ gap: 14 }}>
-              <MedThumb src={medImage(g.regimen, g.med)} alt={g.med.name} size={compact ? 64 : 84} />
+              <MedThumb src={medImage(g.regimen, g.med)} alt={g.med.name} size={compact ? 64 : 84}
+                onClick={() => onZoom({ src: medImage(g.regimen, g.med), name: g.med.short, sub: doseText(g.regimen.amount, g.med.form) })} />
               <div>
                 <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.35 }}>{g.med.short}</div>
                 <div className="t-sub">{doseText(g.regimen.amount, g.med.form)}, {MEAL_TIMING[g.regimen.meal].bn}</div>

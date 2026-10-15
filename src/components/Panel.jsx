@@ -77,7 +77,6 @@ function MicControl({ micOn, setMicOn, lastHeard }) {
 
   return (
     <div>
-      <h2>Live voice</h2>
       <p className="note" style={{ marginBottom: 6 }}>
         Chotu’s voice: {clipCount()} clips ready. {soundUnlocked() ? 'Sound is on.' : 'Click anywhere on the page once to allow sound.'}
       </p>
@@ -150,7 +149,7 @@ function Tour() {
   const idx = TOUR.indexOf(w);
   return (
     <div className="tour">
-      <h2>Guided tour · {idx + 1} of {TOUR.length}</h2>
+      <p className="note">For rehearsing: {idx + 1} of {TOUR.length}. Start sets the clock, elder and caregiver for you.</p>
       <select id="tour-pick" className="tour-pick" value={w.id} onChange={(e) => choose(e.target.value)} aria-label="Choose a workflow">
         {groups.map((g) => (
           <optgroup key={g} label={g}>
@@ -176,52 +175,72 @@ function Tour() {
   );
 }
 
-export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
+/** A section of Demo settings that opens and closes; remembers its state in this browser. */
+function Section({ id, title, defaultOpen = false, children }) {
+  const key = `chotu-sec-${id}`;
+  const [open, setOpen] = useState(() => { try { const v = localStorage.getItem(key); return v == null ? defaultOpen : v === '1'; } catch { return defaultOpen; } });
+  const toggle = () => setOpen((o) => { try { localStorage.setItem(key, o ? '0' : '1'); } catch { /* not saved */ } return !o; });
+  return (
+    <section className="dsec">
+      <button type="button" className="dsec-head" aria-expanded={open} aria-controls={`sec-${id}`} onClick={toggle}>
+        <span>{title}</span>
+        <svg aria-hidden="true" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d={open ? 'M6 15l6-6 6 6' : 'M6 9l6 6 6-6'} /></svg>
+      </button>
+      {open && <div className="dsec-body" id={`sec-${id}`}>{children}</div>}
+    </section>
+  );
+}
+
+export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial }) {
   const { state, dispatch } = useStore();
   const meds = useMeds();
   const elder = state.elders.find((e) => e.id === state.elderOnPhone);
   const next = nextDose(elder, state.clock + 1, meds);
   const allowed = ALLOWED[phase] || [];
+  const advance = (minutes) => dispatch({ type: 'clock/advance', minutes });
 
   return (
-    <aside className="panel" aria-label="Presenter controls">
-      <Tour />
-      <div>
-        <h2>Presenter</h2>
+    <div className="panel">
+      <Section id="phones" title="Who is on each phone" defaultOpen>
+        <label className="field" htmlFor="pick-elder">Elder phone
+          <select id="pick-elder" className="tour-pick" value={state.elderOnPhone} onChange={(e) => dispatch({ type: 'elder/show', elderId: e.target.value })}>
+            {state.elders.map((e) => <option key={e.id} value={e.id}>{e.name} ({e.nameEn})</option>)}
+          </select>
+        </label>
+        <label className="field" htmlFor="pick-carer">Caregiver phone
+          <select id="pick-carer" className="tour-pick" value={state.caregiverOnPhone} onChange={(e) => dispatch({ type: 'caregiver/use', caregiverId: e.target.value })}>
+            {state.caregivers.map((c) => <option key={c.id} value={c.id}>{c.name} ({c.relation}){c.primary ? ' · প্রধান যত্নকারী' : ''}</option>)}
+          </select>
+        </label>
+      </Section>
+
+      <Section id="time" title="Time" defaultOpen>
+        <div className="now" style={{ fontWeight: 700 }}>Day {Math.floor(state.clock / 1440) + 1} · {enTime(state.clock)}</div>
+        <div className="row-btns three">
+          <button className="btn" type="button" onClick={() => advance(10)}>+10 min</button>
+          <button className="btn" type="button" onClick={() => advance(30)}>+30 min</button>
+          <button className="btn" type="button" onClick={() => advance(60)}>+1 hour</button>
+        </div>
+        <button className="btn" type="button" style={{ width: '100%' }} onClick={() => dispatch({ type: 'reset' })}>Reset demo</button>
+      </Section>
+
+      <Section id="actions" title="Demo actions" defaultOpen>
+        <div className="now" role="status" aria-live="polite">{NOW[phase] || ''}</div>
         <button className="btn pri" type="button" disabled={!next || phase !== 'idle'} style={{ width: '100%' }}
           onClick={() => dispatch({ type: 'clock/advance', minutes: next.at - state.clock })}>
           {phase !== 'idle' ? 'Next dose (wait: Chotu is busy)' : `Next dose → ${next ? `${next.med.short}, ${enTime(next.at)}` : 'none'}`}
         </button>
-        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
-          onClick={() => dispatch({ type: 'consent/show', elderId: elder.id })}>
-          Show consent screen on {elder.nameEn}’s phone
-        </button>
-        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
+        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%' }}
           onClick={() => dispatch({ type: 'checkin/request', elderId: elder.id })}>
           Afternoon check-in now ({elder.nameEn}, normally {elder.checkinTime})
         </button>
-      </div>
+        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%' }}
+          onClick={() => dispatch({ type: 'consent/show', elderId: elder.id })}>
+          Show consent screen on {elder.nameEn}’s phone
+        </button>
+      </Section>
 
-      <div className="now" role="status" aria-live="polite">{NOW[phase] || ''}</div>
-
-      <div>
-        <h2>Escalation</h2>
-        {upcoming(state, meds).map((t, i) => <p key={i} className="note" style={{ color: 'var(--ink)', fontSize: 13.5, marginBottom: 4 }}>{t}</p>)}
-        {upcoming(state, meds).length === 0 && <p className="note">Nothing pending. Try “Next dose”, stay silent, then +10 min three times.</p>}
-        <label className="toggle-row">
-          <input type="checkbox" checked={Boolean(state.unreachable?.[elder.id])} onChange={() => dispatch({ type: 'elder/unreachable', elderId: elder.id })} />
-          <span>{elder.nameEn}’s phone unreachable <small>(alert says “can’t reach”, not “missed”)</small></span>
-        </label>
-        <label className="toggle-row">
-          <input type="checkbox" checked={Boolean(state.othersAutoAnswer)} onChange={() => dispatch({ type: 'demo/othersAutoAnswer' })} />
-          <span>{state.elders.filter((e) => e.id !== elder.id).map((e) => e.nameEn).join(', ')} answers reminders on their own <small>(simulated, keeps their alerts out of the demo)</small></span>
-        </label>
-      </div>
-
-      <MicControl micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} />
-
-      <div>
-        <h2>{elder.nameEn} says (simulated)</h2>
+      <Section id="answers" title={`${elder.nameEn} answers (instead of speaking)`} defaultOpen>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
           {GROUPS.map((g) => (
             <div key={g.title} className="pgroup">
@@ -236,14 +255,34 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
             </div>
           ))}
         </div>
-      </div>
+      </Section>
 
-      <p className="note">
-        The chips stand in for the elder’s voice when the microphone is off or the room is noisy. With the microphone on,
-        a short clip of the answer goes to our own small server, which asks a Gemini model for the meaning
-        (took / not yet / forgot / help) and a confidence score. The API key stays on the server. Chotu’s lines play from
-        pre-recorded voice clips and always show as captions.
-      </p>
-    </aside>
+      <Section id="voice" title="Live voice (microphone)">
+        <MicControl micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} />
+        <p className="note">
+          With the microphone on, a short clip of the answer goes to our own small server, which asks a Gemini model for the
+          meaning (took / not yet / forgot / help) and a confidence score. The API key stays on the server.
+        </p>
+      </Section>
+
+      <Section id="escalation" title="Escalation and special cases">
+        {upcoming(state, meds).map((t, i) => <p key={i} className="note" style={{ color: 'var(--ink)', fontSize: 13.5 }}>{t}</p>)}
+        {upcoming(state, meds).length === 0 && <p className="note">Nothing pending. Try “Next dose”, stay silent, then +10 min three times.</p>}
+        <label className="toggle-row">
+          <input type="checkbox" checked={Boolean(state.unreachable?.[elder.id])} onChange={() => dispatch({ type: 'elder/unreachable', elderId: elder.id })} />
+          <span>{elder.nameEn}’s phone unreachable <small>(alert says “can’t reach”, not “missed”)</small></span>
+        </label>
+        <label className="toggle-row">
+          <input type="checkbox" checked={Boolean(state.othersAutoAnswer)} onChange={() => dispatch({ type: 'demo/othersAutoAnswer' })} />
+          <span>{state.elders.filter((e) => e.id !== elder.id).map((e) => e.nameEn).join(', ')} answers reminders on their own <small>(simulated, keeps their alerts out of the demo)</small></span>
+        </label>
+      </Section>
+
+      <Section id="rehearse" title="Rehearsal workflows">
+        <Tour />
+      </Section>
+
+      <button type="button" className="btn" style={{ width: '100%' }} onClick={onTutorial}>Show the tutorial again</button>
+    </div>
   );
 }
