@@ -129,9 +129,44 @@
     "text": "জরুরি বার্তা পাঠানো হচ্ছে। ভুল হলে বাতিল বোতাম চাপুন।",
     "when": "Emergency button tapped, 5-second countdown"
   },
+  "emergency_sent": {
+    "file": "audio/emergency_sent.wav",
+    "text": "আপনার পরিবারের সবাইকে জানানো হয়েছে।",
+    "when": "Countdown finished, alert sent"
+  },
+  "emergency_cancelled": {
+    "file": "audio/emergency_cancelled.wav",
+    "text": "জরুরি বার্তা বাতিল করা হয়েছে।",
+    "when": "Cancel tapped during countdown"
+  },
   "confirm_taken": {
     "file": "audio/confirm_taken.wav",
     "text": "আপনি কি বললেন, ওষুধ খেয়েছেন? হ্যাঁ বা না বলুন।",
     "when": "Voice reply unclear (low confidence), read back before logging"
+  },
+  "checkin_feeling": {
+    "file": "audio/checkin_feeling.wav",
+    "text": "শরীর কেমন লাগছে আজ?",
+    "when": "Daily check-in"
+  },
+  "checkin_walk": {
+    "file": "audio/checkin_walk.wav",
+    "text": "আজ একটু হাঁটা হয়েছে?",
+    "when": "Daily check-in"
+  },
+  "checkin_water": {
+    "file": "audio/checkin_water.wav",
+    "text": "আজ কি পর্যাপ্ত পানি খেয়েছেন?",
+    "when": "Daily check-in"
+  },
+  "checkin_sleep": {
+    "file": "audio/checkin_sleep.wav",
+    "text": "রাতে কি ভালো ঘুম হয়েছিল?",
+    "when": "Daily check-in"
+  },
+  "checkin_thanks": {
+    "file": "audio/checkin_thanks.wav",
+    "text": "ধন্যবাদ, আপনার কথা লিখে রাখলাম।",
+    "when": "After a check-in answer"
   }
 }

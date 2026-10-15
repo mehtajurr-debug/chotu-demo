@@ -267,3 +267,18 @@ button { font-family: inherit; }
 .chip-sel { display: inline-flex; align-items: center; gap: 6px; border: 1.5px solid #A9CCF2; background: #fff; color: #10213F; border-radius: 16px; padding: 3px 12px 3px 4px; min-height: 40px; font: inherit; font-size: 15.5px; font-weight: 700; cursor: pointer; }
 .chip-sel:not(:has(img, .av-init)) { padding-left: 12px; }
 .chip-sel.on { background: #0B2F8A; border-color: #0B2F8A; color: #fff; }
+
+/* Afternoon check-in progress on the elder phone */
+.ci-steps { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.ci-steps span { text-align: center; font-size: 15px; font-weight: 700; padding: 8px 2px; border-radius: 12px; background: #E3EFFC; color: #425A80; }
+.ci-steps span.now { background: #0B2F8A; color: #fff; }
+.ci-steps span.done { background: #D9F0E3; color: #17633F; }
+
+/* 7-day habits grid in the summary */
+.habit-grid { width: 100%; border-collapse: separate; border-spacing: 3px; font-size: 13px; margin-top: 4px; }
+.habit-grid th { font-weight: 700; color: #425A80; text-align: center; padding: 2px; }
+.habit-grid tbody th { text-align: left; white-space: nowrap; }
+.habit-grid td { text-align: center; border-radius: 6px; padding: 4px 0; font-weight: 700; background: #F0F6FD; color: #425A80; }
+.habit-grid td.ok { background: #D9F0E3; color: #17633F; }
+.habit-grid td.warn { background: #FCEBC8; color: #7A4A00; }
+.habit-grid td.bad { background: #F9DEDC; color: #8E1B16; }

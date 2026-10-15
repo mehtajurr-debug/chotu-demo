@@ -10,6 +10,7 @@ import Icon from '../components/Icon.jsx';
 import { STATUS_LOOK, alertLabel, todayDoses } from './status.js';
 import { MealTimes } from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
+import { CHECKIN_WINDOW, QUESTIONS, answerLook, answerText, checkinAt, checkinKey } from '../lib/checkin.js';
 
 const PILL_COLOURS = {
   '': { background: '#CFE3F8', color: '#0B2F8A' },
@@ -170,6 +171,8 @@ function Today({ elder, openAlert }) {
         </div>
       )}
 
+      <CheckinCard elder={elder} />
+
       <div className="card">
         <div style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>কী কী হয়েছে</div>
         {log.length === 0 && <div className="t-sub">এখনও কিছু হয়নি</div>}
@@ -314,6 +317,13 @@ function Profile({ elder }) {
                 onChange={(e) => e.target.value && dispatch({ type: 'elder/sleep', elderId: elder.id, sleep: e.target.value })} />
             : <span>{bnTime(hhmmToMin(elder.sleep))}</span>}
         </div>
+        <div className="kv" style={{ alignItems: 'center' }}>
+          <span>বিকেলের কথার সময়</span>
+          {editMeals
+            ? <input className="time-in" type="time" value={elder.checkinTime} step="300" aria-label="বিকেলের কথার সময়"
+                onChange={(e) => e.target.value && dispatch({ type: 'elder/checkinTime', elderId: elder.id, time: e.target.value })} />
+            : <span>{bnTime(hhmmToMin(elder.checkinTime || '16:00'))}</span>}
+        </div>
         <div className="t-sub" style={{ fontSize: 14 }}>খাবারের সময় থেকেই ওষুধের সময় ঠিক হয় (যেমন “সকালের খাবারের পরে”)।</div>
       </div>
 
@@ -342,3 +352,38 @@ function Profile({ elder }) {
   );
 }
 
+
+// ---------- বিকেলের কথা (afternoon check-in) ----------
+function CheckinCard({ elder }) {
+  const { state } = useStore();
+  const now = state.clock;
+  const day = dayOf(now);
+  const shares = state.consent?.[elder.id]?.wellbeing !== false;
+  const at = checkinAt(elder, day);
+  const rec = state.checkins?.[checkinKey(elder.id, day)];
+  return (
+    <div className="card" style={{ gap: 8 }}>
+      <div className="row">
+        <div className="grow" style={{ fontSize: 16, fontWeight: 700, color: '#425A80' }}>বিকেলের কথা</div>
+        <span className="pill" style={{ fontSize: 13.5 }}>{bnTime(at)}</span>
+      </div>
+      {!shares && <div className="t-sub">{elder.name} শরীরের খবর শেয়ার করা বন্ধ রেখেছেন।</div>}
+      {shares && !rec && (
+        <div className="t-sub">
+          {now < at ? `${bnTime(at)}-এ ছোটু শরীর, হাঁটা, পানি আর ঘুমের কথা জিজ্ঞেস করবে।` : now > at + CHECKIN_WINDOW ? 'আজ কথা হয়নি।' : 'এখন কথা হচ্ছে…'}
+        </div>
+      )}
+      {shares && rec && QUESTIONS.map((q) => {
+        const v = rec.answers[q.key];
+        return (
+          <div key={q.key} className="kv" style={{ alignItems: 'center' }}>
+            <span>{q.bn}</span>
+            <span className={'status ' + answerLook(q.key, v)} style={{ padding: '3px 10px', fontSize: 14.5 }}>
+              {answerText(q.key, v)}{rec.said?.[q.key] ? `: “${rec.said[q.key]}”` : ''}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}

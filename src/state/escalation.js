@@ -5,6 +5,7 @@
 // the next caregiver is added, then everyone. "আমি দেখছি" stops the escalation for everyone else.
 import { bnTime, dayOf } from '../lib/time.js';
 import { ALERT_AFTER, SLOTS, dosesForDay, medMap, waitingSince } from '../lib/schedule.js';
+import { checkinAt, checkinKey } from '../lib/checkin.js';
 
 export const ESCALATE_EVERY = 10; // minutes without "আমি দেখছি" before the next caregiver is told
 
@@ -80,6 +81,18 @@ export function runEscalation(state) {
           s = logAt(s, d.at + 2, { elderId: elder.id, by: elder.id, kind: 'dose', text: `${d.med.short} খেয়েছেন (কথায় বলেছেন)` });
         }
       }
+    }
+  }
+
+  // 0b) Simulation: the off-screen elder also answers the afternoon check-in (all fine).
+  if (s.othersAutoAnswer) {
+    for (const elder of s.elders) {
+      if (elder.id === s.elderOnPhone) continue;
+      const key = checkinKey(elder.id, dayOf(now));
+      const at = checkinAt(elder, dayOf(now)) + 3;
+      if (s.checkins?.[key] || at > now) continue;
+      s = { ...s, checkins: { ...s.checkins, [key]: { at, how: 'voice', answers: { feeling: 'good', walk: true, water: true, sleep: true }, said: {} } } };
+      s = logAt(s, at, { elderId: elder.id, by: elder.id, kind: 'checkin', text: 'বিকেলের কথা: ভালো আছেন, হেঁটেছেন, পানি খেয়েছেন, ঘুম ভালো হয়েছে' });
     }
   }
 

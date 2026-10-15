@@ -11,6 +11,7 @@ import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
 import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel } from '../lib/schedule.js';
 import { lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
+import { QUESTIONS, answerText, checkinDue, interpret } from '../lib/checkin.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import Icon from '../components/Icon.jsx';
 
@@ -137,6 +138,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   function micSilence(context) {
     const p = phaseRef.current;
     if (context === 'undo' || context === 'cancel') return; // nothing said in time: carry on as planned
+    if (context.startsWith('checkin')) return ciAnswer(null); // no answer: just go to the next question
     if (p === 'buttons') return micListen('reminder'); // keep listening while the buttons are up
     noAnswer();
   }
@@ -214,7 +216,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   }
 
   function help(how, what = '“সাহায্য চাই” বলেছেন') {
-    record('help', how, `ওষুধের সময় ${what} (${names()})`, { alert: `${latest.current.elder.name} ${what}` });
+    const when = latest.current.active.length ? `ওষুধের সময় ${what} (${names()})` : what;
+    record('help', how, when, { alert: `${latest.current.elder.name} ${what}` });
     go('speak');
     say('ack_help', () => finish(4000));
   }
@@ -279,8 +282,72 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   // ----- what the elder says: from the live microphone, or simulated from the presenter panel -----
   useEffect(() => onElderSays(handleAnswer));
 
+  // ----- afternoon check-in: four short questions about health and habits -----
+  const ci = useRef({ i: 0, answers: {}, said: {}, retried: false });
+  const ciDueNow = !offline && !consentOpen && checkinDue(elder, now, state.checkins || {});
+  const ciRequested = state.checkinRequest === elder.id;
+  useEffect(() => {
+    if (phase !== 'idle' || due.length || offline || consentOpen) return; // medicine reminders come first
+    if (ciRequested || ciDueNow) startCheckin();
+  }, [phase, ciDueNow, ciRequested, dueKey, offline, consentOpen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function startCheckin() {
+    clearAll();
+    if (latest.current.state.checkinRequest) dispatch({ type: 'checkin/clearRequest' });
+    ci.current = { i: 0, answers: {}, said: {}, retried: false };
+    latest.current.active = [];
+    setActive([]);
+    askQuestion();
+  }
+
+  function askQuestion() {
+    const q = QUESTIONS[ci.current.i];
+    ci.current.retried = false;
+    go('ci-speak');
+    setHeard('');
+    say(q.line, ciListen);
+  }
+
+  function ciListen() {
+    const q = QUESTIONS[ci.current.i];
+    go('ci-listen');
+    setHeard('');
+    if (latest.current.micOn) micListen(`checkin_${q.key}`);
+    else later(() => ciAnswer(null), LISTEN_MS);
+  }
+
+  /** Store one answer (null = no answer) and move on. */
+  function ciAnswer(value, text) {
+    clearAll();
+    const q = QUESTIONS[ci.current.i];
+    ci.current.answers[q.key] = value;
+    if (text && (value === 'pain' || value === 'unwell')) ci.current.said[q.key] = text;
+    ci.current.i += 1;
+    if (ci.current.i < QUESTIONS.length) return askQuestion();
+    const { answers, said } = ci.current;
+    const parts = QUESTIONS.map((x) => answerText(x.key, answers[x.key]) + (said[x.key] ? ` (“${said[x.key]}”)` : ''));
+    dispatch({ type: 'checkin/save', elderId: latest.current.elder.id, answers, said, text: `বিকেলের কথা: ${parts.join(', ')}` });
+    go('speak');
+    say('checkin_thanks', () => finish(2500));
+  }
+
+  function ciHandle(u) {
+    const q = QUESTIONS[ci.current.i];
+    if (u.intent === 'emergency') return startEmergency('voice');
+    if (u.intent === 'silent') return ciAnswer(null);
+    clearAll();
+    if (u.intent === 'help') return typed(u.text, () => help('voice', 'বিকেলের কথার সময় সাহায্য চেয়েছেন'));
+    const value = interpret(q.key, u.intent);
+    typed(u.text, () => {
+      if (value !== undefined) return ciAnswer(value, u.text);
+      if (!ci.current.retried) { ci.current.retried = true; go('ci-speak'); return say('didnt_hear', ciListen); } // never blame; ask once more
+      ciAnswer(null);
+    });
+  }
+
   function handleAnswer(u) {
     const p = phaseRef.current;
+    if (p === 'ci-listen') return ciHandle(u);
     if (p === 'countdown') {
       if (u.intent === 'cancel' || u.intent === 'no') cancelEmergency('voice');
       return;
@@ -330,7 +397,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   if (phase === 'sent') return <Sent elder={elder} alert={emergencyAlert} toast={toast} onBack={() => { clearAll(); go('idle'); }} />;
   if (phase === 'idle') return <Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} />;
 
-  const listening = ['listen', 'readback', 'logged', 'buttons'].includes(phase);
+  const listening = ['listen', 'readback', 'logged', 'buttons', 'ci-listen'].includes(phase);
+  const inCheckin = phase === 'ci-speak' || phase === 'ci-listen';
   const showButtons = phase === 'buttons';
   const compact = showButtons || active.length > 1;
 
@@ -340,7 +408,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         <Avatar person={elder} size={48} />
         <div className="t-name grow">{elder.name}</div>
         <span className="pill" style={phase === 'done' ? { background: '#D9F0E3', color: '#17633F' } : undefined}>
-          {phase === 'speak' && <><Icon name="speaker" size={17} /> ছোটু বলছে</>}
+          {(phase === 'speak' || phase === 'ci-speak') && <><Icon name="speaker" size={17} /> ছোটু বলছে</>}
           {listening && <><Icon name="mic" size={17} /> শুনছি</>}
           {phase === 'done' && <><Icon name="check" size={17} /> হয়ে গেছে</>}
         </span>
@@ -353,7 +421,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
           <img className="av" src="/img/logo.png" alt="ছোটু" width="112" height="112" style={{ width: 112, height: 112 }} />
           <div className="face-badge"><Icon name={listening ? 'mic' : phase === 'done' ? 'check' : 'speaker'} size={19} color="#fff" /></div>
         </div>
-        <div ref={waveRef} className={'wave' + (phase === 'speak' ? ' on' : '') + (micOn && listening ? ' mic' : '')} aria-hidden="true">
+        <div ref={waveRef} className={'wave' + (phase === 'speak' || phase === 'ci-speak' ? ' on' : '') + (micOn && listening ? ' mic' : '')} aria-hidden="true">
           {Array.from({ length: 17 }, (_, i) => <span key={i} style={{ animationDelay: `${(i % 6) * 0.11}s`, '--k': [0.5, 0.9, 0.7, 0.3, 1, 0.6][i % 6] }} />)}
         </div>
       </div>
@@ -371,7 +439,19 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         )}
       </div>
 
-      <div className="card" style={{ padding: compact ? 10 : 14, gap: 10 }}>
+      {inCheckin && (
+        <div className="card" style={{ gap: 10 }}>
+          <div className="row">
+            <div className="t-label grow" style={{ fontSize: 17 }}>বিকেলের কথা</div>
+            <span className="pill">{toBn(Math.min(ci.current.i + 1, QUESTIONS.length))}/{toBn(QUESTIONS.length)}</span>
+          </div>
+          <div className="ci-steps">
+            {QUESTIONS.map((q, i) => <span key={q.key} className={i < ci.current.i ? 'done' : i === ci.current.i ? 'now' : ''}>{q.short}</span>)}
+          </div>
+        </div>
+      )}
+
+      {active.length > 0 && <div className="card" style={{ padding: compact ? 10 : 14, gap: 10 }}>
         {active.map((d) => (
           <div key={d.key} className="row" style={{ gap: 14 }}>
             <MedThumb src={medImage(d.regimen, d.med)} alt={d.med.name} size={compact ? 64 : 112} />
@@ -382,7 +462,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
             </div>
           </div>
         ))}
-      </div>
+      </div>}
 
       {showButtons && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>

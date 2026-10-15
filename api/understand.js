@@ -9,7 +9,7 @@ const API = 'https://generativelanguage.googleapis.com/v1beta';
 const MODEL_TIMEOUT_MS = 6000; // per model
 const TOTAL_BUDGET_MS = 12000; // give up after this, so Chotu can ask again instead of hanging
 
-export const INTENTS = ['took', 'not_yet', 'forgot', 'help', 'pain', 'emergency', 'cancel', 'yes', 'no', 'other'];
+export const INTENTS = ['took', 'not_yet', 'forgot', 'help', 'pain', 'emergency', 'cancel', 'yes', 'no', 'good', 'unwell', 'other'];
 
 const PROMPT = `You classify one short spoken reply from an older adult in Bangladesh to a medicine reminder app called Chotu.
 The speech is Bangla (any regional dialect) and may be mixed with English words.
@@ -24,6 +24,8 @@ Pick exactly one intent:
 - pain: they mention pain or feeling unwell, without asking for urgent help
 - emergency: urgent alarm words (e.g. জরুরি, বাঁচাও, বাঁচান, সাহায্য করুন!! shouted)
 - cancel: they cancel something (e.g. বাতিল, থামো)
+- good: they feel well (e.g. ভালো আছি, আলহামদুলিল্লাহ ভালো, ঠিক আছি)
+- unwell: they feel unwell or weak, without naming pain (e.g. শরীরটা ভালো না, দুর্বল লাগছে, মাথা ঘুরছে)
 - yes: a plain yes (হ্যাঁ, হ, জি, ঠিক আছে)
 - no: a plain no or a correction (না, না না, ভুল হয়েছে)
 - other: anything else, silence, noise, or unclear speech
@@ -38,6 +40,10 @@ const CONTEXTS = {
   reminder: '“It is time for your medicine. Did you take it?”',
   readback: '“Did you say you took the medicine? Say yes or no.”',
   undo: '“Noted that you took it. Say no if that is wrong.” (5-second undo window)',
+  checkin_feeling: '“How are you feeling today?” (daily check-in)',
+  checkin_walk: '“Did you walk a little today?” (daily check-in; answer is yes or no)',
+  checkin_water: '“Did you drink enough water today?” (daily check-in; answer is yes or no)',
+  checkin_sleep: '“Did you sleep well last night?” (daily check-in; answer is yes or no)',
   cancel: '“Sending an emergency alert to your family in 5 seconds. Say cancel (বাতিল) if it was a mistake.”',
 };
 

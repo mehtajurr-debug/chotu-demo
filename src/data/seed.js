@@ -13,9 +13,55 @@ const YESTERDAY = [
   ['b3@-1@night', 'baba', Y(21, 6), 'Rosuva 10 খেয়েছেন (কথায় বলেছেন)'],
 ];
 
+// ---------- a week of history (days -6 to -2), so the summary can show patterns ----------
+const D = (day, h, m) => day * 24 * 60 + h * 60 + m;
+const SLOT_AT = { b1: ['baba', 'morning', 8, 0], b2: ['baba', 'noon', 13, 0], b3: ['baba', 'night', 21, 0], m1: ['ma', 'noon', 13, 0], m2: ['ma', 'night', 20, 45] };
+const MISSED_BEFORE = new Set(['b2@-4@noon', 'b3@-3@night', 'm2@-3@night']);
+const OLDER_DOSES = {};
+for (const day of [-6, -5, -4, -3, -2]) {
+  for (const [rid, [elderId, slot, h, m]] of Object.entries(SLOT_AT)) {
+    const key = `${rid}@${day}@${slot}`;
+    const at = D(day, h, m);
+    OLDER_DOSES[key] = MISSED_BEFORE.has(key)
+      ? { status: 'missed', at: at + 30, how: 'none' }
+      : { status: 'taken', at: at + ((day * 7 + h) % 6 + 6) % 6 + 2, how: 'voice', by: elderId };
+  }
+}
+// Ma's as-needed Napa Extra on earlier days
+OLDER_DOSES['m3@-5@prn-' + D(-5, 15, 10)] = { status: 'taken', at: D(-5, 15, 10), how: 'button', by: 'ma' };
+OLDER_DOSES['m3@-2@prn-' + D(-2, 11, 40)] = { status: 'taken', at: D(-2, 11, 40), how: 'button', by: 'ma' };
+
+// Afternoon check-ins: feeling = good | unwell | pain; walk / water / sleep = true (yes) | false (no) | null (no answer)
+const CI = (elderId, day, feeling, walk, water, sleep, said = {}) => [`${elderId}@${day}`, { at: D(day, 16, 6), how: 'voice', answers: { feeling, walk, water, sleep }, said }];
+const CHECKINS = Object.fromEntries([
+  CI('baba', -6, 'good', true, true, true),
+  CI('baba', -5, 'good', true, false, true),
+  CI('baba', -4, 'unwell', false, true, false, { feeling: 'শরীরটা একটু দুর্বল লাগছে' }),
+  CI('baba', -3, 'pain', false, true, false, { feeling: 'হাঁটুতে ব্যথা করছে' }),
+  CI('baba', -2, 'good', true, true, true),
+  CI('baba', -1, 'pain', true, true, false, { feeling: 'হাঁটুতে একটু ব্যথা' }),
+  CI('ma', -6, 'good', false, false, true),
+  CI('ma', -5, 'good', true, false, true),
+  CI('ma', -4, 'good', false, true, true),
+  CI('ma', -3, 'unwell', false, false, false, { feeling: 'মাথাটা একটু ভার লাগছে' }),
+  CI('ma', -2, 'good', true, true, true),
+  CI('ma', -1, 'good', false, false, true),
+]);
+
+// Alerts from those earlier missed doses, already handled and resolved.
+const PAST = (id, elderId, key, at, text, by) => ({
+  id, elderId, kind: 'missed', text, doseKeys: [key], createdAt: at, ladder: true, level: 0,
+  handledBy: by, handledAt: at + 6, resolvedAt: at + 25, seenBy: [by], told: true, handlingTold: true, unreachable: false,
+});
+const PAST_ALERTS = [
+  PAST('past1', 'baba', 'b2@-4@noon', D(-4, 13, 30), 'বাবা দুপুরের ওষুধের উত্তর দেননি (Angilock Plus, দুপুর ১:০০)।', 'shumon'),
+  PAST('past2', 'baba', 'b3@-3@night', D(-3, 21, 30), 'বাবা রাতের ওষুধের উত্তর দেননি (Rosuva 10, রাত ৯:০০)।', 'ruma'),
+  PAST('past3', 'ma', 'm2@-3@night', D(-3, 21, 15), 'মা রাতের ওষুধের উত্তর দেননি (Calbo-D, রাত ৮:৪৫)।', 'shumon'),
+];
+
 export function makeSeed() {
   return {
-    version: 10,
+    version: 12,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -34,6 +80,7 @@ export function makeSeed() {
         photo: '/img/baba.png',
         meals: { breakfast: '07:45', lunch: '12:45', dinner: '20:45' },
         sleep: '22:30',
+        checkinTime: '16:00', // afternoon check-in about health and habits
         alertOrder: ['shumon', 'ruma'],
         regimens: [
           { id: 'b1', medId: 'comet', amount: 1, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
@@ -49,6 +96,7 @@ export function makeSeed() {
         photo: '/img/ma.png',
         meals: { breakfast: '08:00', lunch: '13:30', dinner: '20:30' },
         sleep: '22:00',
+        checkinTime: '16:00',
         alertOrder: ['shumon', 'ruma'],
         regimens: [
           { id: 'm1', medId: 'osartil', amount: 1, slots: ['noon'], meal: 'before', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
@@ -61,6 +109,7 @@ export function makeSeed() {
     // One record per dose, keyed "regimenId@day@slot". status: taken | snoozed | unsure | help
     // Yesterday (day -1) is pre-filled so "last dose" has something real to show.
     doses: {
+      ...OLDER_DOSES,
       ...Object.fromEntries(YESTERDAY.map(([key, elderId, at]) => [key, { status: 'taken', at, how: 'voice', by: elderId }])),
       // Ma took her as-needed Napa Extra at 6:30 this morning (so another one at 8:00 breaks the 6-hour rule).
       'm3@0@prn-390': { status: 'taken', at: 390, how: 'voice', by: 'ma' },
@@ -83,8 +132,12 @@ export function makeSeed() {
     // so their alerts do not clutter the story being presented.
     othersAutoAnswer: true,
 
+    // Afternoon check-ins, keyed "elderId@day" (see src/lib/checkin.js)
+    checkins: CHECKINS,
+    checkinRequest: null, // presenter asks an elder phone to start the check-in now
+
     // Alerts to caregivers (see src/state/escalation.js)
-    alerts: [],
+    alerts: PAST_ALERTS,
     // Presenter toggle: this elder's phone can't be reached (changes the alert wording)
     unreachable: { baba: false, ma: false },
     // Shared notes between caregivers, per elder.

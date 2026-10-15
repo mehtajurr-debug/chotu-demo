@@ -4,13 +4,14 @@ import { useStore, useMeds } from '../state/store.jsx';
 import { ALERT_AFTER, REPEAT_EVERY, dueGroup, nextDose, waitingSince } from '../lib/schedule.js';
 import { ESCALATE_EVERY, recipients, topLevel } from '../state/escalation.js';
 import { enTime } from '../lib/time.js';
-import { UTTERANCES, sayAsElder } from '../lib/voice.js';
+import { UTTERANCES, clipCount, sayAsElder, soundUnlocked } from '../lib/voice.js';
 import { disableMic, enableMic, voiceStatus } from '../lib/mic.js';
 import { useEffect, useState } from 'react';
 
 const GROUPS = [
   { title: 'Answering the reminder', keys: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent'] },
   { title: 'Read-back and undo', keys: ['yes', 'no'] },
+  { title: 'Afternoon check-in', keys: ['ci_good', 'ci_unwell', 'ci_pain', 'ci_yes', 'ci_no', 'silent'] },
   { title: 'Emergency (while listening)', keys: ['sos', 'cancel'] },
 ];
 
@@ -21,6 +22,7 @@ const ALLOWED = {
   readback: ['yes', 'no', 'silent', 'sos'],
   logged: ['no'],
   countdown: ['cancel'],
+  'ci-listen': ['ci_good', 'ci_unwell', 'ci_pain', 'ci_yes', 'ci_no', 'silent', 'sos'],
 };
 
 const NOW = {
@@ -31,6 +33,8 @@ const NOW = {
   logged: 'Logged. The elder has 5 seconds to say “না” to undo.',
   buttons: 'Two tries with no clear answer, so the big buttons appeared. Voice still works.',
   done: 'Done. Check the caregiver phone.',
+  'ci-speak': 'Afternoon check-in: Chotu is asking a question.',
+  'ci-listen': 'Afternoon check-in: choose the answer (feeling, then walk, water, sleep). Silence skips the question.',
   countdown: 'Emergency countdown. Say “বাতিল” or tap the big Cancel within 5 seconds.',
   sent: 'Emergency sent to everyone. Check the caregiver phone (Call 999 is demo only).',
 };
@@ -45,15 +49,30 @@ function MicControl({ micOn, setMicOn, lastHeard }) {
   const [err, setErr] = useState('');
   useEffect(() => { voiceStatus().then((s) => setReady(s.voiceReady)); }, []);
 
+  // Refresh the small status line (clips ready, sound enabled) every few seconds.
+  const [, tick] = useState(0);
+  useEffect(() => { const i = setInterval(() => tick((n) => n + 1), 3000); return () => clearInterval(i); }, []);
+
   const toggle = async () => {
     setErr('');
     if (micOn) { disableMic(); setMicOn(false); return; }
-    try { await enableMic(); setMicOn(true); } catch (e) { setErr(e.message || 'Microphone blocked.'); }
+    if (!window.isSecureContext) { setErr('The microphone only works on http://localhost:5173 (start-demo.bat), not on another address.'); return; }
+    try { await enableMic(); setMicOn(true); } catch (e) {
+      const name = e?.name || '';
+      if (name === 'NotAllowedError' || name === 'SecurityError') {
+        setErr('The browser blocked the microphone. In Chrome, click the icon at the left of the address bar → Microphone → Allow, then click this button again. (The preview inside the Claude app always blocks the microphone, so use Chrome.)');
+      } else if (name === 'NotFoundError') {
+        setErr('No microphone was found. Plug one in or check Windows sound settings, then try again.');
+      } else setErr(e?.message || 'The microphone could not start.');
+    }
   };
 
   return (
     <div>
       <h2>Live voice</h2>
+      <p className="note" style={{ marginBottom: 6 }}>
+        Chotu’s voice: {clipCount()} clips ready. {soundUnlocked() ? 'Sound is on.' : 'Click anywhere on the page once to allow sound.'}
+      </p>
       <button type="button" className={'btn' + (micOn ? ' pri' : '')} style={{ width: '100%' }} disabled={ready === false && !micOn} onClick={toggle}>
         {micOn ? '● Microphone on (click to turn off)' : 'Turn on microphone'}
       </button>
@@ -124,6 +143,10 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard }) {
         <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
           onClick={() => dispatch({ type: 'consent/show', elderId: elder.id })}>
           Show consent screen on {elder.nameEn}’s phone
+        </button>
+        <button className="btn" type="button" disabled={phase !== 'idle'} style={{ width: '100%', marginTop: 8 }}
+          onClick={() => dispatch({ type: 'checkin/request', elderId: elder.id })}>
+          Afternoon check-in now ({elder.nameEn}, normally {elder.checkinTime})
         </button>
       </div>
 

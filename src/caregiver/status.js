@@ -20,7 +20,7 @@ export function todayDoses(elder, now, meds, doses) {
 }
 
 /** The most important thing to say about this elder right now: { cls, icon, text } or null. */
-export function headline(elder, now, meds, doses, alerts = [], caregivers = [], shares = true) {
+export function headline(elder, now, meds, doses, alerts = [], caregivers = [], shares = true, checkin = null) {
   // An open alert beats everything else.
   const mine = alerts.filter((a) => a.elderId === elder.id && !a.resolvedAt).sort((a, b) => b.createdAt - a.createdAt);
   const open = mine.find((a) => !a.handledBy);
@@ -38,6 +38,10 @@ export function headline(elder, now, meds, doses, alerts = [], caregivers = [], 
   if (pick('conflict').length) return { cls: 'warn', icon: 'alert', text: `${names(pick('conflict'))}: দুইবার লেখা হয়েছে, মিলিয়ে দেখুন` };
   if (pick('due').length) return { cls: '', icon: 'clock', text: `এখন সময়: ${names(pick('due'))}` };
   if (pick('snoozed').length) return { cls: 'warn', icon: 'clock', text: `${names(pick('snoozed'))}: পরে খাবেন বলেছেন` };
+  // Today's afternoon check-in (only passed in when the elder shares how they feel)
+  const feel = checkin?.answers?.feeling;
+  if (feel === 'pain') return { cls: 'warn', icon: 'alert', text: `আজ ব্যথার কথা বলেছেন${checkin.said?.feeling ? `: “${checkin.said.feeling}”` : ''}` };
+  if (feel === 'unwell') return { cls: 'warn', icon: 'alert', text: 'আজ শরীর ভালো নেই বলেছেন' };
   const taken = pick('taken').sort((a, b) => b.rec.at - a.rec.at);
   if (taken.length) {
     const lastAt = taken[0].rec.at;

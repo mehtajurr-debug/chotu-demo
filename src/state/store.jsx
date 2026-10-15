@@ -154,6 +154,19 @@ function reducer(state, action) {
       const s = { ...state, showConsentFor: null, consent: { ...state.consent, [action.elderId]: { ...c, agreedAt: state.clock } } };
       return logEntry(s, { elderId: action.elderId, by: action.elderId, kind: 'consent', text: `সম্মতি দিয়েছেন: ${on.length ? on.join(', ') : 'কিছুই শেয়ার নয়'} (সাহায্য ও জরুরি বার্তা সবসময় যাবে)` });
     }
+    // Afternoon check-in answers. Shared with the family only if the elder agreed to share how they feel.
+    case 'checkin/save': {
+      const day = Math.floor(state.clock / (24 * 60));
+      const rec = { at: state.clock, how: action.how || 'voice', answers: action.answers, said: action.said || {} };
+      const s = { ...state, checkinRequest: null, checkins: { ...state.checkins, [`${action.elderId}@${day}`]: rec } };
+      return logEntry(s, { elderId: action.elderId, by: action.elderId, kind: 'checkin', text: action.text });
+    }
+    case 'checkin/request':
+      return { ...state, checkinRequest: action.elderId };
+    case 'checkin/clearRequest':
+      return { ...state, checkinRequest: null };
+    case 'elder/checkinTime':
+      return updateElder(state, action.elderId, (e) => ({ ...e, checkinTime: action.time }));
     case 'demo/othersAutoAnswer':
       return { ...state, othersAutoAnswer: !state.othersAutoAnswer };
     case 'elder/unreachable':

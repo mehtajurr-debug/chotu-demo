@@ -9,7 +9,7 @@
 
 Tip: the **Next dose** button greys out while Chotu is talking ("wait: Chotu is busy"). Wait a second until the elder phone says "waiting".
 
-## The script (about 3 minutes)
+## The script (about 3½ minutes; skip step 5 or 9's last two answers if you are short of time)
 
 | # | What you do | What the judges see | What you can say |
 |---|---|---|---|
@@ -20,9 +20,11 @@ Tip: the **Next dose** button greys out while Chotu is talking ("wait: Chotu is 
 | 5 | Wait about 10 seconds, then tap **বাবা** on the caregiver phone | Today: Comet + Ecosprin **খেয়েছেন**, timeline updated | "The family sees it straight away." Tap the back arrow afterwards. |
 | 6 | Panel: **Next dose →** (1:00 PM), then straight away **+30 min** | Baba's phone: "আপনার উত্তর পাইনি, তাই আমি আপনার পরিবারকে জানাচ্ছি" | "No answer: Chotu repeats at +10 and +20 minutes, and at +30 tells the family." |
 | 7 | Tap the **red banner** on the caregiver phone → **আমি দেখছি** | Alert shows Baba's photo and who was told when. Baba hears "আপনার পরিবারের একজন বিষয়টি দেখছেন" | "One tap and nobody else is disturbed. If Shumon had not answered, Rumana would be told after 10 minutes." |
-| 8 | Back arrow twice (to home). Panel: **Next dose →** (9:00 PM). When listening, say **"মনে নেই"** (or chip) | Chotu says **wait**, it never says "take it". Banner: *ওষুধ খাওয়ার কথা মনে নেই*. Tap it: the alert shows when the last dose was taken | "Not sure is the dangerous case. Chotu never tells him to take it again; it asks the family to check." |
-| 9 | Elder phone: big red **জরুরি অবস্থা** | 5-second countdown with a huge Cancel. Then "শান্ত থাকুন, বাবা". Caregiver: red emergency screen with **৯৯৯-এ ফোন করুন** | "Voice works too: জরুরি or বাঁচাও. বাতিল cancels. Help and emergency always go through, whatever the consent settings." |
-| 10 | Caregiver: back to home → **সারাংশ** tab | Bangla daily summary: medicines, alerts, notes | "This summary comes from fixed templates and real records, not from AI. No medical advice anywhere." |
+| 8 | Back arrow twice (to home). Top bar: **+1 hour**, **+1 hour**, **+30 min** (clock reaches 4:00 PM) | Chotu starts the **afternoon check-in** by itself: "শরীর কেমন লাগছে আজ?" | "Every afternoon Chotu asks four short questions: how he feels, walking, water, sleep." |
+| 9 | Answer with chips (or voice): **হাঁটুতে একটু ব্যথা** → **না, হয়নি** → **হ্যাঁ, হয়েছে** → **হ্যাঁ, হয়েছে** | Progress strip শরীর · হাঁটা · পানি · ঘুম. Caregiver home card: *আজ ব্যথার কথা বলেছেন: “হাঁটুতে একটু ব্যথা”* | "Fixed questions with simple answers, not free chat. Pain is noted for the family, without any diagnosis." |
+| 10 | Panel: **Next dose →** (9:00 PM). When listening, say **"মনে নেই"** (or chip) | Chotu says **wait**, it never says "take it". Banner: *ওষুধ খাওয়ার কথা মনে নেই*. Tap it: the alert shows when the last dose was taken | "Not sure is the dangerous case. Chotu never tells him to take it again; it asks the family to check." |
+| 11 | Elder phone: big red **জরুরি অবস্থা** | 5-second countdown with a huge Cancel. Then "শান্ত থাকুন, বাবা". Caregiver: red emergency screen with **৯৯৯-এ ফোন করুন** | "Voice works too: জরুরি or বাঁচাও. বাতিল cancels. Help and emergency always go through, whatever the consent settings." |
+| 12 | Caregiver: back to home → **সারাংশ** tab, then tap **৭ দিন** | Today: medicines, health and habits, alerts, notes. 7 days: *লক্ষ্য করার মতো* (e.g. knee pain on 3 days, 2 missed doses), adherence per medicine, and a colour grid of feeling / walk / water / sleep | "The family sees patterns, not just today. It comes from fixed templates and real records, not AI, and it is not medical advice, but they can show it to the doctor." |
 
 ## If something goes wrong
 - **No sound:** click once anywhere on the page. Captions always show the words anyway.
@@ -32,11 +34,13 @@ Tip: the **Next dose** button greys out while Chotu is talking ("wait: Chotu is 
 
 ## Be honest with the judges (what is live, what is simulated)
 - **Live:** the whole interface and logic: setup, verification, reminders, undo, escalation and alert ownership, safety rules, consent, summary. With the microphone on, Baba's answer really is understood by a Gemini model through our own small server (the API key never reaches the browser).
-- **Simulated / scripted:** the people and their medicine history are sample data. The demo clock replaces real time. The two phones are on one screen; in real life they are separate phones. Calls and 999 are not dialled. "Ma answers on her own" is a presenter switch to keep the story simple.
-- **Roadmap, not in the demo:** reading prescriptions automatically (OCR), free conversation with Chotu, location sharing, real push notifications.
+- **Simulated / scripted:** the people, their medicine history and the earlier days' check-ins are sample data (so the 7-day summary has something to show). The demo clock replaces real time. The two phones are on one screen; in real life they are separate phones. Calls and 999 are not dialled. "Ma answers on her own" is a presenter switch to keep the story simple.
+- **Roadmap, not in the demo:** reading prescriptions automatically (OCR), free conversation with Chotu (the check-in uses four fixed questions), location sharing, real push notifications.
 - **Do not claim** that it understands every Bangla dialect. We tested with a few synthetic voices only. Report the real hit rate from the 10-clip accent test with volunteer voices before saying anything about accuracy.
 
 ## Other things you can show if there is time
+- Panel: **Afternoon check-in now** starts the check-in at any time (without moving the clock).
+- Caregiver: Baba's dashboard shows today's **বিকেলের কথা**; on the **প্রোফাইল** tab the check-in time can be changed (default 4:00 PM).
 - Switch the top bar to **Rumana**: she can add a medicine, but only Shumon can activate it (**যাচাই বাকি**).
 - Panel: **Baba's phone unreachable**. The alert says "can't reach his phone" instead of "missed".
 - Panel: **Show consent screen** on Baba's phone. Turn off "ওষুধ খাওয়ার খবর" and the family no longer sees dose details, but help and emergency still come through.

@@ -62,12 +62,13 @@ export default function CaregiverPhone({ toast, onScreen }) {
 
 const STATUS_ICON_COLOUR = { '': '#0B2F8A', ok: '#17633F', warn: '#7A4A00', bad: '#8E1B16' };
 
-function ElderCard({ elder, now, meds, doses, alerts, caregivers, consent, onOpen }) {
+function ElderCard({ elder, now, meds, doses, alerts, caregivers, consent, checkins, onOpen }) {
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
   const shares = consent?.medication !== false; // the elder agreed to share medicine status
-  const head = headline(elder, now, meds, doses, alerts, caregivers, shares); // an alert, or what just happened
+  const ci = consent?.wellbeing !== false ? checkins?.[`${elder.id}@${dayOf(now)}`] : null; // today's afternoon check-in
+  const head = headline(elder, now, meds, doses, alerts, caregivers, shares, ci); // an alert, or what just happened
   return (
     <button type="button" className="card tap" style={{ padding: 16, gap: 14 }} onClick={onOpen}>
       <div className="row" style={{ gap: 14 }}>
@@ -174,7 +175,7 @@ function Home({ toast, go }) {
         </div>
 
         {state.elders.map((e) => (
-          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} doses={state.doses} alerts={state.alerts} caregivers={state.caregivers} consent={state.consent?.[e.id]} onOpen={() => go({ name: 'day', elderId: e.id })} />
+          <ElderCard key={e.id} elder={e} now={state.clock} meds={meds} doses={state.doses} alerts={state.alerts} caregivers={state.caregivers} consent={state.consent?.[e.id]} checkins={state.checkins} onOpen={() => go({ name: 'day', elderId: e.id })} />
         ))}
 
         <button type="button" className="add-btn" onClick={() => go({ name: 'add' })}>
