@@ -51,7 +51,8 @@ export function Switch({ on, onChange, label, sub }) {
 }
 
 /** Opens the camera / gallery and returns a small JPEG data URL. */
-export function PhotoButton({ onPhoto, onError, children, className = 'btn-wide' }) {
+/** Opens the camera or photo picker. onFile gets the original file (for reading text); onPhoto a small copy. */
+export function PhotoButton({ onPhoto, onFile, onError, children, className = 'btn-wide' }) {
   const input = useRef(null);
   return (
     <>
@@ -61,7 +62,7 @@ export function PhotoButton({ onPhoto, onError, children, className = 'btn-wide'
           const f = e.target.files?.[0];
           e.target.value = '';
           if (!f) return;
-          try { onPhoto(await fileToSmallDataUrl(f)); } catch { onError?.(); }
+          try { if (onFile) await onFile(f); else onPhoto(await fileToSmallDataUrl(f)); } catch { onError?.(); }
         }} />
     </>
   );

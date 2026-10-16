@@ -222,6 +222,7 @@ function baseReducer(state, action) {
       s.elderOnPhone = o.elder ?? s.elderOnPhone;
       s.caregiverOnPhone = o.caregiver ?? s.caregiverOnPhone;
       if (o.unreachable) s.unreachable = { ...s.unreachable, [o.unreachable]: true };
+      if (o.consent) s.showConsentFor = o.consent;
       const meds = medMap(s);
       const doses = { ...s.doses };
       const day = Math.floor(s.clock / (24 * 60));
@@ -241,13 +242,6 @@ function baseReducer(state, action) {
       let s = updateElder(state, action.elderId, (e) => ({ ...e, regimens: e.regimens.map((r) => (r.id === action.regimenId ? { ...r, stock: Math.max(0, r.stock ?? 0) + action.count } : r)) }));
       s = { ...s, alerts: s.alerts.map((a) => (a.kind === 'refill' && !a.resolvedAt && a.doseKeys[0] === `${action.regimenId}@stock` ? { ...a, resolvedAt: state.clock, handledBy: a.handledBy || action.by, handledAt: a.handledAt ?? state.clock } : a)) };
       return logEntry(s, { elderId: action.elderId, by: action.by, kind: 'setup', text: `${action.medName}: ${bn(action.count)}টি কেনা হয়েছে, হিসাবে যোগ হলো` });
-    }
-    // The elder says a medicine has run out. Set the count to zero and tell the family.
-    case 'elder/reportOut': {
-      const elder = state.elders.find((e) => e.id === action.elderId);
-      let s = updateElder(state, elder.id, (e) => ({ ...e, regimens: e.regimens.map((r) => (r.id === action.regimenId ? { ...r, stock: 0 } : r)) }));
-      s = logEntry(s, { elderId: elder.id, by: elder.id, kind: 'alert', text: `জানিয়েছেন: ${action.medName} শেষ হয়ে গেছে` });
-      return refillAlert(s, elder.id, action.regimenId, `${elder.name} জানিয়েছেন ${action.medName} শেষ হয়ে গেছে। নতুন ওষুধ কিনে দিতে হবে।`);
     }
     // The elder wants to talk to someone in the family (demo: no real call is made).
     case 'elder/call': {

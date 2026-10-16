@@ -4,6 +4,7 @@ import Header from './components/Header.jsx';
 import Phone from './components/Phone.jsx';
 import Panel from './components/Panel.jsx';
 import Tutorial from './components/Tutorial.jsx';
+import Coach from './components/Coach.jsx';
 import ElderPhone from './elder/ElderPhone.jsx';
 import CaregiverPhone from './caregiver/CaregiverPhone.jsx';
 import { enTime } from './lib/time.js';
@@ -18,16 +19,16 @@ const store = {
 };
 
 // Scale the phones to the space left by the header, the chosen view and an open drawer.
-function useFitScale(view, drawerOpen) {
+function useFitScale(view, drawerOpen, reserveBottom = 0) {
   useEffect(() => {
     const fit = () => {
       const narrow = innerWidth <= 900;
       const hdr = document.querySelector('.hdr')?.offsetHeight || 64;
-      const availH = innerHeight - hdr - 24 - 44; // top margin + label under the phone
+      const availH = innerHeight - hdr - 24 - 44 - reserveBottom; // top margin + label under the phone (+ the rehearsal card)
       const count = view === 'both' && !narrow ? 2 : 1;
       const side = drawerOpen && innerWidth > 1100 ? DRAWER_W : 0;
       const availW = innerWidth - 40 - side - (count === 2 ? 56 : 0);
-      const s = Math.max(0.42, Math.min(1.25, availH / PHONE_H, availW / count / PHONE_W));
+      const s = Math.max(0.3, Math.min(1.25, availH / PHONE_H, availW / count / PHONE_W));
       document.documentElement.style.setProperty('--s', s.toFixed(3));
     };
     fit();
@@ -36,7 +37,7 @@ function useFitScale(view, drawerOpen) {
     if (hdr) ro.observe(hdr);
     addEventListener('resize', fit);
     return () => { ro.disconnect(); removeEventListener('resize', fit); };
-  }, [view, drawerOpen]);
+  }, [view, drawerOpen, reserveBottom]);
 }
 
 function useNarrow() {
@@ -59,10 +60,20 @@ export default function App() {
   const [elderPhase, setElderPhase] = useState('idle');
   const [micOn, setMicOn] = useState(false); // live microphone, switched on in Demo settings
   const [lastHeard, setLastHeard] = useState(null); // what the server understood last time
-  useFitScale(shown, drawerOpen);
+  const [coach, setCoach] = useState(null); // rehearsal workflow being followed
+  const [coachH, setCoachH] = useState(0); // its height, so the phones shrink to stay above it
+  useFitScale(shown, drawerOpen, coach && !drawerOpen ? coachH + 8 : 0);
 
   const setView = (v) => { setViewRaw(v); store.set('chotu-view', v); };
   const closeTutorial = () => { setTutorial(false); store.set('chotu-tutorial-seen', '1'); };
+  const { dispatch } = useStore();
+  // Start a rehearsal workflow: set up the moment it starts from, show the right phone(s), show the guide card.
+  const startTour = (w) => {
+    dispatch({ type: 'demo/setup', setup: w.setup });
+    setView(w.view || 'both');
+    setDrawerOpen(false);
+    setCoach(w.id);
+  };
   const elder = state.elders.find((e) => e.id === state.elderOnPhone);
   const carer = state.caregivers.find((c) => c.id === state.caregiverOnPhone);
   const time = enTime(state.clock).split(' ')[0]; // shown in the phones' status bar
@@ -90,9 +101,10 @@ export default function App() {
             <svg aria-hidden="true" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round"><path d="M6 6l12 12M18 6L6 18" /></svg>
           </button>
         </div>
-        {drawerOpen && <Panel phase={elderPhase} micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} onTutorial={() => { setDrawerOpen(false); setTutorial(true); }} />}
+        {drawerOpen && <Panel phase={elderPhase} micOn={micOn} setMicOn={setMicOn} lastHeard={lastHeard} onTutorial={() => { setDrawerOpen(false); setTutorial(true); }} onStartTour={startTour} />}
       </aside>
 
+      {coach && !drawerOpen && <Coach id={coach} phase={elderPhase} shown={shown} setView={setView} onStart={startTour} onEnd={() => setCoach(null)} onHeight={setCoachH} />}
       {tutorial && <Tutorial onClose={closeTutorial} />}
     </>
   );

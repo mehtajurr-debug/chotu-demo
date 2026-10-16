@@ -337,3 +337,42 @@ button { font-family: inherit; }
 .medzoom .name { color: #fff; font-size: 30px; font-weight: 700; text-align: center; line-height: 1.3; }
 .medzoom .sub { color: #CFE3F8; font-size: 20px; text-align: center; }
 .medzoom .close { min-height: 72px; width: 100%; border-radius: 22px; border: 0; background: #fff; color: #0B2F8A; font: inherit; font-size: 24px; font-weight: 700; cursor: pointer; }
+
+/* ---------- rehearsal guide card ---------- */
+.coach { position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 25; width: min(720px, calc(100vw - 32px)); max-height: 40vh; overflow-y: auto;
+  background: var(--surface); color: var(--ink); border: 1.5px solid var(--accent); border-radius: 16px; box-shadow: var(--shadow); padding: 12px; display: flex; flex-direction: column; gap: 10px; }
+.coach-head { display: flex; align-items: center; gap: 6px; }
+.coach-head small { display: block; font-size: 12px; color: var(--sub); font-weight: 600; }
+.coach-head b { display: block; font-size: 15px; line-height: 1.3; }
+.coach-x { border: 0; background: var(--soft); color: var(--ink); width: 36px; height: 36px; border-radius: 10px; font-size: 16px; cursor: pointer; flex-shrink: 0; }
+.coach-step { display: flex; gap: 10px; align-items: flex-start; font-size: 15px; line-height: 1.45; font-weight: 600; background: var(--soft); border-radius: 12px; padding: 10px; }
+.coach-n { flex-shrink: 0; background: var(--accent); color: var(--on-accent); border-radius: 10px; padding: 1px 8px; font-size: 13px; font-weight: 700; }
+.coach-pill { position: fixed; left: 50%; transform: translateX(-50%); bottom: 12px; z-index: 25; border: 1.5px solid var(--accent); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 10px 16px; font: inherit; font-size: 14px; font-weight: 700; cursor: pointer; box-shadow: var(--shadow); }
+@media (max-width: 900px) { .coach { left: 8px; right: 8px; transform: none; bottom: 8px; width: auto; max-height: 42vh; padding: 10px; gap: 8px; } .coach-step { font-size: 14px; padding: 8px; } }
+
+/* ---------- prescription photo (AI) ---------- */
+.scan-entry { border-color: #0B2F8A !important; background: #EAF2FD !important; }
+.rx-sample { border: 1.5px solid #A9CCF2; background: #fff; border-radius: 14px; padding: 6px; display: flex; flex-direction: column; gap: 4px; align-items: center; cursor: pointer; font: inherit; font-size: 15px; font-weight: 700; color: #0B2F8A; }
+.rx-sample img { width: 100%; height: 120px; object-fit: cover; object-position: top; border-radius: 8px; }
+.flag { background: #FCEBC8; color: #6B3A00; border-radius: 10px; padding: 6px 10px; font-size: 14px; line-height: 1.45; font-weight: 600; }
+.scan-bar { width: 200px; height: 8px; border-radius: 4px; background: #D6E6F8; overflow: hidden; }
+.scan-bar span { display: block; width: 40%; height: 100%; background: #0B2F8A; border-radius: 4px; animation: scan 1.2s ease-in-out infinite alternate; }
+@keyframes scan { from { transform: translateX(-10%); } to { transform: translateX(160%); } }
+
+/* ---------- AI summary ---------- */
+.ai-card { gap: 10px; padding: 14px; border: 1.5px solid #8DB6EA; background: linear-gradient(180deg, #F3F8FF, #fff); }
+.ai-tag { font-size: 13px; font-weight: 700; color: #0B2F8A; letter-spacing: .2px; }
+.ai-sub { font-size: 14px; font-weight: 700; color: #425A80; }
+.ai-skel { height: 16px; border-radius: 8px; background: linear-gradient(90deg, #E3EFFC, #F4F8FE, #E3EFFC); background-size: 200% 100%; animation: skel 1.2s linear infinite; }
+@keyframes skel { from { background-position: 200% 0; } to { background-position: 0 0; } }
+.signal { border-radius: 12px; padding: 8px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 15.5px; line-height: 1.45; }
+.signal span { font-size: 14px; color: #425A80; }
+.signal.watch { background: #FCEBC8; }
+.signal.watch b { color: #6B3A00; }
+.signal.good { background: #D9F0E3; }
+.signal.good b { color: #17633F; }
+.tip { border-left: 4px solid #0B2F8A; background: #EAF2FD; border-radius: 0 10px 10px 0; padding: 7px 10px; font-size: 15.5px; line-height: 1.5; }
+.coach .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.coach .chip { flex-shrink: 0; min-height: 40px; font-size: 15px; }
+.coach .chip small { display: none; }
+.coach .pgroup > span { font-size: 12px; }

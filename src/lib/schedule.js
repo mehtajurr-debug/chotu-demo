@@ -29,7 +29,9 @@ export const MEAL_TIMING = {
 const FORM_BN = { tablet: 'ট্যাবলেট', capsule: 'ক্যাপসুল', injection: 'ইনজেকশন' };
 const AMOUNT_BN = { 0.5: 'আধা', 1: '১টি', 2: '২টি' };
 /** 1, 'tablet' -> "১টি ট্যাবলেট" */
-export const doseText = (amount, form) => `${AMOUNT_BN[amount] || bn(amount)} ${FORM_BN[form] || 'ট্যাবলেট'}`;
+export const doseText = (amount, form) => (form === 'injection' && amount > 2
+  ? `${bn(amount)} ইউনিট ইনজেকশন` // insulin is written in units
+  : `${AMOUNT_BN[amount] || bn(amount)} ${FORM_BN[form] || 'ট্যাবলেট'}`);
 
 export function durationText(d) {
   if (!d || d.type === 'ongoing') return 'চলতে থাকবে';
@@ -125,6 +127,7 @@ export function doseStatus(dose, now, doses) {
   const rec = doses[dose.key];
   if (rec?.conflict) return 'conflict'; // two people logged the same dose
   if (rec) return rec.status === 'snoozed' && rec.until <= now ? 'due' : rec.status;
+  if (!counts(dose)) return 'before'; // this time had passed when the schedule was switched on
   return dose.at <= now ? 'due' : 'upcoming';
 }
 

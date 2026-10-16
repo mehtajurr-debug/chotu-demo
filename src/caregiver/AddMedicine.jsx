@@ -5,6 +5,7 @@ import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { Label, PhotoButton, ScreenHeader, Stepper, Switch, Toggle } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
+import ScanRx from './ScanRx.jsx';
 import { LIBRARY, MEAL_NAMES, SLOTS, customSlot, isCustom, medImage, slotTime } from '../lib/schedule.js';
 import { bn, bnTime, hhmmToMin } from '../lib/time.js';
 
@@ -70,8 +71,10 @@ export default function AddMedicine({ elderId, onDone, toast }) {
     );
   }
 
+  if (step === 'scan') return <ScanRx elder={elder} onBack={() => setStep('search')} onDone={onDone} toast={toast} />;
+
   if (step === 'search') {
-    return <SearchStep elder={elder} onBack={() => (elderId ? onDone() : setStep('who'))}
+    return <SearchStep elder={elder} onBack={() => (elderId ? onDone() : setStep('who'))} onScan={() => setStep('scan')}
       onPick={(m) => { set({ medId: m.id, custom: null, photo: null }); setStep('photo'); }}
       onCustom={(name) => { set({ medId: null, custom: { name, short: name, bn: name, strength: '', form: 'tablet' }, photo: null }); setStep('photo'); }} />;
   }
@@ -135,7 +138,7 @@ export default function AddMedicine({ elderId, onDone, toast }) {
   );
 }
 
-function SearchStep({ elder, onBack, onPick, onCustom }) {
+function SearchStep({ elder, onBack, onPick, onCustom, onScan }) {
   const [q, setQ] = useState('');
   const query = q.trim().toLowerCase();
   const hits = useMemo(() => {
@@ -150,6 +153,16 @@ function SearchStep({ elder, onBack, onPick, onCustom }) {
       <input className="search" type="search" placeholder="ওষুধের নাম লিখুন, যেমন Comet" value={q} autoFocus
         onChange={(e) => setQ(e.target.value)} aria-label="ওষুধের নাম" />
       <div className="body" style={{ gap: 8 }}>
+        {!query && (
+          <button type="button" className="result scan-entry" onClick={onScan}>
+            <span className="thumb" style={{ width: 56, height: 56, alignItems: 'center', justifyContent: 'center', background: '#0B2F8A' }}><Icon name="doc" color="#fff" /></span>
+            <span className="grow">
+              <span style={{ display: 'block', fontSize: 18, fontWeight: 700 }}>প্রেসক্রিপশনের ছবি থেকে</span>
+              <span className="t-sub" style={{ display: 'block', fontSize: 14 }}>ছবি তুললে এআই সব ওষুধ পড়ে তালিকা বানাবে</span>
+            </span>
+            <span className="pill" style={{ fontSize: 12.5 }}>AI</span>
+          </button>
+        )}
         <Label>{query ? `${hits.length}টি মিলেছে` : 'ওষুধের তালিকা'}</Label>
         {hits.map((m) => (
           <button key={m.id} type="button" className="result" onClick={() => onPick(m)}>
@@ -176,7 +189,7 @@ function SearchStep({ elder, onBack, onPick, onCustom }) {
   );
 }
 
-function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
+export function ScheduleStep({ elder, med, d, set, toast, onBack, onNext, nextLabel = 'পরের ধাপ' }) {
   const { dispatch } = useStore();
   const [editMeals, setEditMeals] = useState(false);
   const toggleSlot = (s) => set({ slots: d.slots.includes(s) ? d.slots.filter((x) => x !== s) : [...d.slots, s] });
@@ -240,7 +253,7 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
           </>
         )}
 
-        <div>
+        {d.stock != null && <div>
           <Label>এখন কতটি আছে? (ওষুধ শেষ হওয়ার আগে জানাতে)</Label>
           <div style={{ marginTop: 6 }}><Stepper value={d.stock} min={0} max={300} unit={formWord(med)} onChange={(v) => set({ stock: v })} /></div>
           <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
@@ -250,7 +263,7 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
             <Label>কত দিনের ওষুধ বাকি থাকলে জানাব?</Label>
             <div style={{ marginTop: 6 }}><Stepper value={d.refillDays} min={1} max={30} unit="দিন" onChange={(v) => set({ refillDays: v })} /></div>
           </div>
-        </div>
+        </div>}
 
         <div>
           <Label>কত দিন চলবে?</Label>
@@ -269,7 +282,7 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
 
         <div>
           <Label>প্রেসক্রিপশনের ছবি (ঐচ্ছিক)</Label>
-          <div className="t-sub" style={{ fontSize: 14 }}>শুধু মিলিয়ে দেখার জন্য রাখা হবে। ছোটু এটি পড়ে না।</div>
+          <div className="t-sub" style={{ fontSize: 14 }}>শুধু মিলিয়ে দেখার জন্য রাখা হবে।</div>
           <div className="row" style={{ gap: 8, marginTop: 8 }}>
             {[...SAMPLE_RX, ...(d.rxPhoto && !SAMPLE_RX.includes(d.rxPhoto) ? [d.rxPhoto] : [])].map((src) => (
               <button key={src} type="button" aria-pressed={d.rxPhoto === src} aria-label="এই প্রেসক্রিপশন বেছে নিন"
@@ -287,7 +300,7 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
       </div>
       <div className="foot">
         {!ready && <div className="t-sub" style={{ textAlign: 'center', fontSize: 15 }}>দিনের অন্তত একটি সময় বেছে নিন</div>}
-        <button type="button" className="btn-wide" disabled={!ready} onClick={onNext}>পরের ধাপ</button>
+        <button type="button" className="btn-wide" disabled={!ready} onClick={onNext}>{nextLabel}</button>
       </div>
     </div>
   );

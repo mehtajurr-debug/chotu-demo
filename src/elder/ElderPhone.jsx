@@ -2,7 +2,7 @@
 // Only the caption and the ring change. The emergency button is always visible.
 //
 // Reminder flow (voice first, zero taps when it goes well):
-//   dose due -> Chotu speaks -> listens -> "লিখে রাখলাম" with 5 s to say "না" -> logged to the caregiver timeline.
+//   dose due -> Chotu speaks -> listens -> logged to the caregiver timeline -> "ধন্যবাদ, লিখে রাখলাম।"
 //   Silence or a failed answer: "আমি ঠিক বুঝতে পারিনি, আবার বলবেন?" (max 2 tries), then buttons appear.
 //   A low-confidence answer is read back before logging.
 import { useEffect, useRef, useState } from 'react';
@@ -179,22 +179,10 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
 
   // ----- outcomes -----
   function took(how) {
-    go('logged');
-    setUndoOn(false);
-    // The 5-second undo window starts when Chotu has finished saying "ভুল হলে “না” বলুন".
-    // ("না" already works while Chotu is still speaking.)
-    say('ack_taken', () => {
-      if (phaseRef.current !== 'logged') return;
-      setUndoOn(true);
-      if (latest.current.micOn) micListen('undo');
-      later(() => {
-        micAbort.current?.abort();
-        setUndoOn(false);
-        record('taken', how, `${names()} খেয়েছেন (${how === 'voice' ? 'কথায় বলেছেন' : 'বোতাম চেপেছেন'})`);
-        setCaption('লিখে রাখা হয়েছে');
-        finish();
-      }, UNDO_MS);
-    });
+    // Logged straight away: no "say না to undo" step (decided 16 Oct). Unclear answers still get a read-back first.
+    record('taken', how, `${names()} খেয়েছেন (${how === 'voice' ? 'কথায় বলেছেন' : 'বোতাম চেপেছেন'})`);
+    go('speak');
+    say('ack_taken', () => finish(2000));
   }
 
   function notYet(how) {
@@ -640,7 +628,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dis
         <span className="pill white">{bnTime(now)}</span>
       </div>
 
-      {sheet ? <ElderSheet sheet={sheet} elder={elder} meds={meds} carers={carers} dispatch={dispatch} onSheet={setSheet} /> : <>
+      {sheet ? <ElderSheet sheet={sheet} elder={elder} carers={carers} dispatch={dispatch} onSheet={setSheet} /> : <>
       <div style={{ textAlign: 'center', marginTop: 10 }}>
         <div style={{ fontSize: 34, fontWeight: 700, color: '#0B2F8A', lineHeight: 1.4 }}>
           {bnGreeting(now)}, {elder.name}
@@ -693,10 +681,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dis
 
       <div className="row" style={{ gap: 10, flexShrink: 0, ...(next || prn.length ? {} : { marginTop: 'auto' }) }}>
         <button type="button" className="answer small grow" style={{ minHeight: 64, flex: 1 }} onClick={() => setSheet('call')}>
-          <Icon name="phone" size={22} /> পরিবারকে ফোন
-        </button>
-        <button type="button" className="answer small grow" style={{ minHeight: 64, flex: 1 }} onClick={() => setSheet('out')}>
-          ওষুধ শেষ হয়ে গেছে
+          <Icon name="phone" size={22} /> পরিবারকে ফোন করুন
         </button>
       </div>
       </>}
@@ -709,8 +694,8 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dis
   );
 }
 
-/** Elder: call someone in the family, or say a medicine has run out. Big photos, one tap each. */
-function ElderSheet({ sheet, elder, meds, carers, dispatch, onSheet }) {
+/** Elder: call someone in the family. Big photos, one tap. (Running out is tracked by the stock count.) */
+function ElderSheet({ sheet, elder, carers, dispatch, onSheet }) {
   const back = (
     <button type="button" className="answer" style={{ marginTop: 'auto' }} onClick={() => onSheet(null)}>
       <Icon name="back" size={24} /> ফিরে যান
@@ -728,36 +713,15 @@ function ElderSheet({ sheet, elder, meds, carers, dispatch, onSheet }) {
       </div>
     );
   }
-  if (sheet === 'call') {
-    return (
-      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
-        <div style={{ fontSize: 28, fontWeight: 700, color: '#0B2F8A', textAlign: 'center', marginTop: 8 }}>কাকে ফোন করবেন?</div>
-        {carers.map((c) => (
-          <button key={c.id} type="button" className="answer" style={{ justifyContent: 'flex-start', gap: 14, minHeight: 88, fontSize: 26 }}
-            onClick={() => { dispatch({ type: 'elder/call', elderId: elder.id, to: c.id }); onSheet({ done: `${c.name}কে ফোন করা হচ্ছে…`, sub: 'ডেমো: আসলে কল হয় না, শুধু তাঁকে জানানো হলো', photo: c.photo, calling: true }); }}>
-            <Avatar person={c} size={64} /> {c.name} <span style={{ fontSize: 18, color: '#425A80', fontWeight: 500 }}>({c.relation})</span>
-          </button>
-        ))}
-        {back}
-      </div>
-    );
-  }
-  const active = elder.regimens.filter((r) => r.status === 'active');
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
-      <div style={{ fontSize: 26, fontWeight: 700, color: '#0B2F8A', textAlign: 'center', marginTop: 6, lineHeight: 1.35 }}>কোন ওষুধ শেষ হয়ে গেছে?</div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, overflow: 'auto' }}>
-        {active.map((r) => {
-          const m = meds[r.medId];
-          return (
-            <button key={r.id} type="button" className="answer" style={{ flexDirection: 'column', minHeight: 150, gap: 6 }}
-              onClick={() => { dispatch({ type: 'elder/reportOut', elderId: elder.id, regimenId: r.id, medName: m?.short }); onSheet({ done: 'ধন্যবাদ। পরিবারকে জানিয়ে দিলাম।', sub: `${m?.short} কিনে আনার কথা বলা হয়েছে।` }); }}>
-              <MedThumb src={medImage(r, m)} alt="" size={84} />
-              {m?.short}
-            </button>
-          );
-        })}
-      </div>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+      <div style={{ fontSize: 28, fontWeight: 700, color: '#0B2F8A', textAlign: 'center', marginTop: 8 }}>কাকে ফোন করবেন?</div>
+      {carers.map((c) => (
+        <button key={c.id} type="button" className="answer" style={{ justifyContent: 'flex-start', gap: 14, minHeight: 88, fontSize: 26 }}
+          onClick={() => { dispatch({ type: 'elder/call', elderId: elder.id, to: c.id }); onSheet({ done: `${c.name}কে ফোন করা হচ্ছে…`, sub: 'ডেমো: আসলে কল হয় না, শুধু তাঁকে জানানো হলো', photo: c.photo, calling: true }); }}>
+          <Avatar person={c} size={64} /> {c.name} <span style={{ fontSize: 18, color: '#425A80', fontWeight: 500 }}>({c.relation})</span>
+        </button>
+      ))}
       {back}
     </div>
   );

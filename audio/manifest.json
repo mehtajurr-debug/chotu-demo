@@ -101,8 +101,8 @@
   },
   "ack_taken": {
     "file": "audio/ack_taken.wav",
-    "text": "ধন্যবাদ, লিখে রাখলাম। ভুল হলে “না” বলুন।",
-    "when": "Elder said খেয়েছি (5-second undo starts)"
+    "text": "ধন্যবাদ, লিখে রাখলাম।",
+    "when": "Elder said খেয়েছি (logged straight away)"
   },
   "ack_not_yet": {
     "file": "audio/ack_not_yet.wav",
@@ -139,10 +139,30 @@
     "text": "জরুরি বার্তা বাতিল করা হয়েছে।",
     "when": "Cancel tapped during countdown"
   },
+  "sos_logged": {
+    "file": "audio/sos_logged.wav",
+    "text": "ওষুধ খাওয়ার সময়টি লিখে রাখলাম।",
+    "when": "As-needed dose logged within limits"
+  },
+  "sos_too_soon": {
+    "file": "audio/sos_too_soon.wav",
+    "text": "এই ওষুধ আগের বার খাওয়ার অল্প সময় পরেই নেওয়া হচ্ছে। আমি আপনার পরিবারকে জানিয়ে দিচ্ছি।",
+    "when": "As-needed dose logged but gap/daily max exceeded"
+  },
   "confirm_taken": {
     "file": "audio/confirm_taken.wav",
     "text": "আপনি কি বললেন, ওষুধ খেয়েছেন? হ্যাঁ বা না বলুন।",
     "when": "Voice reply unclear (low confidence), read back before logging"
+  },
+  "schedule_changed_baba": {
+    "file": "audio/schedule_changed_baba.wav",
+    "text": "বাবা, আপনার ওষুধের সময় বদলেছে। নতুন সময়ে আমি মনে করিয়ে দেব।",
+    "when": "Caregiver edited the live schedule"
+  },
+  "schedule_changed_ma": {
+    "file": "audio/schedule_changed_ma.wav",
+    "text": "মা, আপনার ওষুধের সময় বদলেছে। নতুন সময়ে আমি মনে করিয়ে দেব।",
+    "when": "Caregiver edited the live schedule"
   },
   "checkin_feeling": {
     "file": "audio/checkin_feeling.wav",
@@ -169,9 +189,9 @@
     "text": "ধন্যবাদ, আপনার কথা লিখে রাখলাম।",
     "when": "After a check-in answer"
   },
-  "sos_too_soon": {
-    "file": "audio/sos_too_soon.wav",
-    "text": "এই ওষুধ আগের বার খাওয়ার অল্প সময় পরেই নেওয়া হচ্ছে। আমি আপনার পরিবারকে জানিয়ে দিচ্ছি।",
-    "when": "As-needed dose logged but gap/daily max exceeded"
+  "consent_intro": {
+    "file": "audio/consent_intro.wav",
+    "text": "আমি আপনার ওষুধ খাওয়ার তথ্য আপনার পরিবারকে জানাব। জরুরি বার্তা সবসময় যাবে। আপনি কি রাজি?",
+    "when": "Consent screen"
   }
 }

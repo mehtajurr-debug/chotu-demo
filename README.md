@@ -18,7 +18,7 @@ npm run dev               # http://localhost:5173
 
 On Windows you can also double-click `start-demo.bat`.
 
-- Everything except live speech understanding works **without an API key and offline**: the presenter panel's chips stand in for the elder's voice.
+- Everything except the three AI features (speech understanding, prescription photo reading, AI summary) works **without an API key and offline**: the presenter panel's chips stand in for the elder's voice, medicines can be added by name, and the summary screen still shows the template record.
 - Use your **own** Gemini key (Google AI Studio → Get API key). Never commit `.env`; it is git-ignored.
 - The microphone needs a secure origin: `localhost` or the HTTPS Vercel site.
 
@@ -46,6 +46,9 @@ src/
   components/             phone frame, top bar, presenter panel (tour, chips, mic switch), icons
 api/
   understand.js           server-only: audio clip -> Gemini -> {intent, confidence, transcript}
+  prescription.js         server-only: printed prescription photo -> Gemini -> medicine lines (src/lib/rx.js turns them into drafts)
+  summary.js              server-only: facts from src/lib/facts.js -> Gemini -> Bangla headline, signals, family tips
+  _gemini.js              shared helper: JSON-schema calls with model fallback
   status.js               tells the page if a key is set (never returns it)
 vite.config.js            runs /api/* inside the dev server (same handlers Vercel runs in production)
 ```
@@ -66,7 +69,7 @@ From CLAUDE.md, enforced in code:
 - "মনে নেই" never tells the elder to take the medicine; it alerts the family with the last dose time.
 - As-needed doses are always logged; breaking the family's limits alerts caregivers.
 - Emergency: 5-second countdown with a large Cancel, then everyone is alerted. Help and emergency ignore consent settings.
-- No medical advice or diagnosis anywhere, including the summary (fixed templates, no AI).
+- No medical advice or diagnosis anywhere. The AI summary prompt forbids diagnosis and any medicine change, tips that mention changing doses are dropped on the server, and only facts the elder consented to share are sent.
 - Every alert shows the elder's photo and name.
 
 ## Deploying

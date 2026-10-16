@@ -1,6 +1,10 @@
-// Bangla summary engine: fixed sentence templates over the app's own records (doses, check-ins, alerts, notes).
-// No AI call. It reports what happened and simple patterns; it never gives medical advice or a diagnosis.
-import { useState } from 'react';
+// Summaries for the family. Two layers:
+//  1. AI summary (top card): Gemini reads the facts from src/lib/facts.js and writes a short Bangla story, patterns
+//     worth watching and practical tips for the family (api/summary.js). No diagnosis, no medicine advice.
+//  2. The record (below): fixed sentence templates over the app's own data. Always works, also offline,
+//     and shows the facts the AI summary was based on.
+import { useEffect, useState } from 'react';
+import { buildFacts } from '../lib/facts.js';
 import { useMeds, useStore } from '../state/store.jsx';
 import { bn, bnTime, dayOf } from '../lib/time.js';
 import { doseStatus, dosesForDay } from '../lib/schedule.js';
@@ -109,16 +113,17 @@ export function buildDay(state, elder, day, meds) {
   return { title, sections };
 }
 
-// ---------- the last 7 days ----------
-export function buildWeek(state, elder, meds) {
+// ---------- the last 7 (or 28) days ----------
+export function buildWeek(state, elder, meds, n = 7) {
   const today = dayOf(state.clock);
-  const days = Array.from({ length: 7 }, (_, i) => today - 6 + i);
+  const days = Array.from({ length: n }, (_, i) => today - n + 1 + i);
+  const span = n === 7 ? '৭ দিন' : `${bn(n / 7)} সপ্তাহ`;
   const consent = state.consent?.[elder.id] || {};
   const sections = [];
   const notice = []; // "worth noticing": plain facts and simple patterns, no advice
 
   // Medicines: adherence overall and per medicine
-  const med = { heading: 'ওষুধ (৭ দিন)', icon: 'check', lines: [] };
+  const med = { heading: `ওষুধ (${span})`, icon: 'check', lines: [] };
   if (consent.medication === false) med.lines.push(`${elder.name} ওষুধ খাওয়ার খবর শেয়ার করা বন্ধ রেখেছেন।`);
   else {
     const all = days.flatMap((d) => dayDoses(state, elder, d, meds));
@@ -148,11 +153,11 @@ export function buildWeek(state, elder, meds) {
 
   // Health and habits: day-by-day grid plus counts
   let grid = null;
-  const wb = { heading: 'শরীর ও অভ্যাস (৭ দিন)', icon: 'clock', lines: [] };
+  const wb = { heading: `শরীর ও অভ্যাস (${span})`, icon: 'clock', lines: [] };
   if (consent.wellbeing === false) wb.lines.push(`${elder.name} শরীরের খবর শেয়ার করা বন্ধ রেখেছেন।`);
   else {
     const recs = days.map((d) => state.checkins?.[checkinKey(elder.id, d)] || null);
-    grid = days.map((d, i) => ({ label: d === today ? 'আজ' : d === today - 1 ? 'গত' : `-${bn(today - d)}`, rec: recs[i] }));
+    if (n === 7) grid = days.map((d, i) => ({ label: d === today ? 'আজ' : d === today - 1 ? 'গত' : `-${bn(today - d)}`, rec: recs[i] }));
     const talked = recs.filter(Boolean);
     const count = (key, val) => talked.filter((r) => r.answers[key] === val).length;
     const answered = (key) => talked.filter((r) => r.answers[key] != null).length;
@@ -173,7 +178,7 @@ export function buildWeek(state, elder, meds) {
     const badSleep = last3.filter((r) => r.answers.sleep === false).length;
     if (badSleep >= 2) notice.push(`শেষ ${bn(last3.length)} দিনের মধ্যে ${bn(badSleep)} রাত ভালো ঘুম হয়নি।`);
     const walked = count('walk', true);
-    if (talked.length >= 4 && walked <= Math.floor(talked.length / 2)) notice.push(`এই সপ্তাহে হাঁটা কম হয়েছে (${bn(walked)} দিন)।`);
+    if (talked.length >= 4 && walked <= Math.floor(talked.length / 2)) notice.push(`হাঁটা কম হয়েছে (${bn(talked.length)} দিনের মধ্যে ${bn(walked)} দিন)।`);
     const lowWater = count('water', false);
     if (lowWater >= 3) notice.push(`${bn(lowWater)} দিন পানি কম খেয়েছেন বলেছেন।`);
     const unwellDays = count('feeling', 'unwell');
@@ -186,12 +191,12 @@ export function buildWeek(state, elder, meds) {
   const kinds = new Map();
   for (const a of alerts) kinds.set(alertLabel(a), (kinds.get(alertLabel(a)) || 0) + 1);
   sections.push({
-    heading: 'সতর্কতা (৭ দিন)', icon: 'bell',
+    heading: `সতর্কতা (${span})`, icon: 'bell',
     lines: alerts.length ? [...kinds].map(([k, n]) => `${k}: ${bn(n)} বার`) : ['কোনো সতর্কতা ছিল না।'],
   });
 
-  sections.unshift({ heading: 'লক্ষ্য করার মতো', icon: 'alert', lines: notice.length ? notice : ['এই সপ্তাহে বিশেষ কিছু চোখে পড়েনি।'], highlight: notice.length > 0 });
-  return { title: `${elder.gen} গত ৭ দিনের সারাংশ`, sections, grid };
+  sections.unshift({ heading: 'লক্ষ্য করার মতো', icon: 'alert', lines: notice.length ? notice : ['বিশেষ কিছু চোখে পড়েনি।'], highlight: notice.length > 0 });
+  return { title: `${elder.gen} গত ${span}ের সারাংশ`, sections, grid };
 }
 
 // ---------- screen ----------
@@ -206,12 +211,17 @@ export default function Summary({ onBack, toast }) {
   const meds = useMeds();
   const [elderId, setElderId] = useState(state.elders[0].id);
   const today = dayOf(state.clock);
-  const [view, setView] = useState('today'); // today | yesterday | week
+  const [view, setView] = useState('today'); // today | yesterday | week | month
   const elder = state.elders.find((e) => e.id === elderId);
-  const s = view === 'week' ? buildWeek(state, elder, meds) : buildDay(state, elder, view === 'today' ? today : today - 1, meds);
+  const s = view === 'week' ? buildWeek(state, elder, meds) : view === 'month' ? buildWeek(state, elder, meds, 28)
+    : buildDay(state, elder, view === 'today' ? today : today - 1, meds);
+  const facts = buildFacts(state, elder, meds, view);
+  const ai = useAiSummary(elder.id, view, facts);
 
   const copy = async () => {
-    const text = [s.title, ...s.sections.flatMap((x) => [`\n${x.heading}`, ...x.lines.map((l) => `• ${l}`)]), '\n(নির্দিষ্ট ছাঁচ থেকে তৈরি, চিকিৎসা পরামর্শ নয়)'].join('\n');
+    const a = ai.data;
+    const top = a ? [a.headline, a.summary, ...a.signals.map((x) => `• ${x.text} (${x.evidence})`), ...a.tips.map((t) => `→ ${t}`), ''] : [];
+    const text = [s.title, ...top, ...s.sections.flatMap((x) => [`\n${x.heading}`, ...x.lines.map((l) => `• ${l}`)]), '\n(ছোটুর রেকর্ড থেকে তৈরি, চিকিৎসা পরামর্শ নয়)'].join('\n');
     try { await navigator.clipboard.writeText(text); toast('সারাংশ কপি হয়েছে, এখন যেকোনো জায়গায় পাঠাতে পারেন'); }
     catch { toast('কপি করা গেল না'); }
   };
@@ -226,12 +236,14 @@ export default function Summary({ onBack, toast }) {
           </button>
         ))}
         <span className="grow" />
-        {[['yesterday', 'গতকাল'], ['today', 'আজ'], ['week', '৭ দিন']].map(([v, label]) => (
+        {[['yesterday', 'গতকাল'], ['today', 'আজ'], ['week', '৭ দিন'], ['month', '৪ সপ্তাহ']].map(([v, label]) => (
           <button key={v} type="button" className={'chip-sel' + (v === view ? ' on' : '')} onClick={() => setView(v)}>{label}</button>
         ))}
       </div>
       <div className="body" style={{ gap: 10 }}>
         <div style={{ fontSize: 21, fontWeight: 700, color: '#0B2F8A' }}>{s.title}</div>
+        <AiCard ai={ai} />
+        <div style={{ fontSize: 15, fontWeight: 700, color: '#425A80', marginTop: 4 }}>বিস্তারিত তথ্য (ছোটুর রেকর্ড)</div>
         {s.sections.map((x) => (
           <div key={x.heading} className="card" style={{ gap: 6, padding: 12, ...(x.highlight ? { background: '#FCEBC8', borderColor: '#F1C979' } : {}) }}>
             <div style={{ fontSize: 15, fontWeight: 700, color: x.highlight ? '#7A4A00' : '#425A80' }}>{x.heading}</div>
@@ -252,12 +264,89 @@ export default function Summary({ onBack, toast }) {
           </div>
         ))}
         <div className="t-sub" style={{ fontSize: 13.5, textAlign: 'center' }}>
-          নির্দিষ্ট বাক্যের ছাঁচ থেকে তৈরি, কোনো AI ব্যবহার হয়নি। এগুলো শুধু তথ্য, রোগ নির্ণয় বা চিকিৎসা পরামর্শ নয়। ডাক্তারের কাছে গেলে এই সারাংশ দেখাতে পারেন।
+          উপরের সারাংশ এআই (Gemini) লিখেছে, শুধু ছোটুর রেকর্ড আর {elder.gen} সম্মতি অনুযায়ী তথ্য থেকে। নিচের তথ্য রেকর্ড থেকে সরাসরি। কোনোটিই রোগ নির্ণয় বা চিকিৎসা পরামর্শ নয়; ডাক্তারের কাছে গেলে এই সারাংশ দেখাতে পারেন।
         </div>
       </div>
       <button type="button" className="btn-wide ghost" style={{ flexShrink: 0 }} onClick={copy}>
         <Icon name="doc" size={20} /> সারাংশ কপি করুন
       </button>
+    </div>
+  );
+}
+
+// ---------- AI summary ----------
+const cache = new Map(); // same facts -> same summary, without asking again
+const loadCache = () => { try { return JSON.parse(sessionStorage.getItem('chotu-ai-summary') || '{}'); } catch { return {}; } };
+const saveCache = (k, v) => { try { const all = loadCache(); all[k] = v; sessionStorage.setItem('chotu-ai-summary', JSON.stringify(all)); } catch { /* not saved */ } };
+
+function hash(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+  return h.toString(36);
+}
+
+function useAiSummary(elderId, period, facts) {
+  const body = JSON.stringify({ period, facts });
+  const key = `${elderId}|${period}|${hash(body)}`;
+  const [res, setRes] = useState({ key: null, status: 'loading', data: null });
+  const [again, setAgain] = useState(0);
+  useEffect(() => {
+    const hit = !again && (cache.get(key) || loadCache()[key]);
+    if (hit) { setRes({ key, status: 'ok', data: hit }); return undefined; }
+    let live = true;
+    setRes({ key, status: 'loading', data: null });
+    fetch('/api/summary', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body })
+      .then(async (r) => { const j = await r.json().catch(() => ({})); if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`); return j; })
+      .then((j) => { cache.set(key, j); saveCache(key, j); if (live) setRes({ key, status: 'ok', data: j }); })
+      .catch((e) => { if (live) setRes({ key, status: 'error', data: null, error: String(e.message || e) }); });
+    return () => { live = false; };
+  }, [key, again]); // eslint-disable-line react-hooks/exhaustive-deps
+  const current = res.key === key ? res : { status: 'loading', data: null };
+  return { ...current, retry: () => setAgain((n) => n + 1) };
+}
+
+function AiCard({ ai }) {
+  if (ai.status === 'loading') {
+    return (
+      <div className="card ai-card" aria-live="polite">
+        <div className="ai-tag">ছোটুর সারাংশ · AI</div>
+        <div className="ai-skel" /><div className="ai-skel" style={{ width: '70%' }} />
+        <div className="t-sub" style={{ fontSize: 14 }}>রেকর্ড পড়ে সারাংশ লেখা হচ্ছে…</div>
+      </div>
+    );
+  }
+  if (ai.status === 'error') {
+    return (
+      <div className="card ai-card">
+        <div className="ai-tag">ছোটুর সারাংশ · AI</div>
+        <div style={{ fontSize: 16, lineHeight: 1.5 }}>এআই সারাংশ এখন পাওয়া যাচ্ছে না (ইন্টারনেট বা এআই ব্যস্ত)। নিচের তথ্য রেকর্ড থেকে, সেটি ঠিক আছে।</div>
+        <button type="button" className="chip-sel" style={{ alignSelf: 'flex-start' }} onClick={ai.retry}>আবার চেষ্টা করুন</button>
+      </div>
+    );
+  }
+  const a = ai.data;
+  return (
+    <div className="card ai-card" aria-live="polite">
+      <div className="row"><div className="ai-tag grow">ছোটুর সারাংশ · AI</div><button type="button" className="chip-sel" style={{ minHeight: 34, fontSize: 13.5 }} onClick={ai.retry}>আবার লিখুন</button></div>
+      <div style={{ fontSize: 19, fontWeight: 700, lineHeight: 1.45, color: '#10213F' }}>{a.headline}</div>
+      <div style={{ fontSize: 16, lineHeight: 1.6 }}>{a.summary}</div>
+      {a.signals.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="ai-sub">লক্ষ্য করার মতো</div>
+          {a.signals.map((x, i) => (
+            <div key={i} className={'signal ' + x.kind}>
+              <b>{x.kind === 'good' ? '✓ ' : '! '}{x.text}</b>
+              <span>{x.evidence}</span>
+            </div>
+          ))}
+        </div>
+      )}
+      {a.tips.length > 0 && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+          <div className="ai-sub">পরিবার যা করতে পারেন</div>
+          {a.tips.map((t, i) => <div key={i} className="tip">{t}</div>)}
+        </div>
+      )}
     </div>
   );
 }

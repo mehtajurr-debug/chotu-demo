@@ -11,7 +11,7 @@ import { TOUR } from '../data/tour.js';
 
 const GROUPS = [
   { title: 'Answering the reminder', keys: ['took', 'took_reg', 'not_yet', 'forgot', 'help', 'unclear', 'silent'] },
-  { title: 'Read-back and undo', keys: ['yes', 'no'] },
+  { title: 'Read-back (unclear answer)', keys: ['yes', 'no'] },
   { title: 'Afternoon check-in', keys: ['ci_good', 'ci_unwell', 'ci_pain', 'ci_yes', 'ci_no', 'silent'] },
   { title: 'Emergency (while listening)', keys: ['sos', 'cancel'] },
 ];
@@ -136,20 +136,52 @@ function upcoming(state, meds) {
   return out;
 }
 
-/** Guided tour: pick a workflow, start it from the right moment, follow the steps. */
-function Tour() {
-  const { dispatch } = useStore();
+/** The elder's answers as chips, enabled for what makes sense right now. Compact: only the usable ones. */
+export function AnswerChips({ phase, compact = false }) {
+  const allowed = ALLOWED[phase] || [];
+  if (compact) {
+    const keys = [...new Set(GROUPS.flatMap((g) => g.keys))].filter((k) => allowed.includes(k));
+    if (!keys.length) return null;
+    return (
+      <div className="pgroup">
+        <span>Elder says (tap instead of speaking)</span>
+        <div className="chips">
+          {keys.map((k) => <button key={k} type="button" className="chip" onClick={() => sayAsElder(k)}>{UTTERANCES[k].text || '(চুপ)'}<small>{UTTERANCES[k].en}</small></button>)}
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+      {GROUPS.map((g) => (
+        <div key={g.title} className="pgroup">
+          <span>{g.title}</span>
+          <div className="chips">
+            {g.keys.map((k) => (
+              <button key={k} type="button" className="chip" disabled={!allowed.includes(k)} onClick={() => sayAsElder(k)}>
+                {UTTERANCES[k].text || '(চুপ)'}<small>{UTTERANCES[k].en}</small>
+              </button>
+            ))}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** Rehearsal workflows: pick one and start it. The steps then show in a guide card over the phones. */
+function Tour({ onStart }) {
   const saved = (() => { try { return localStorage.getItem('chotu-tour') || TOUR[0].id; } catch { return TOUR[0].id; } })();
   const [id, setId] = useState(saved);
   const [done, setDone] = useState([]);
   const w = TOUR.find((x) => x.id === id) || TOUR[0];
   const groups = [...new Set(TOUR.map((x) => x.group))];
   const choose = (v) => { setId(v); setDone([]); try { localStorage.setItem('chotu-tour', v); } catch { /* not saved */ } };
-  const start = () => { setDone([]); dispatch({ type: 'demo/setup', setup: w.setup }); };
+  const start = () => { setDone([]); onStart(w); };
   const idx = TOUR.indexOf(w);
   return (
     <div className="tour">
-      <p className="note">For rehearsing: {idx + 1} of {TOUR.length}. Start sets the clock, elder and caregiver for you.</p>
+      <p className="note">For rehearsing: {idx + 1} of {TOUR.length}. Start sets the clock, elder and caregiver, closes this panel and shows the steps in a guide card.</p>
       <select id="tour-pick" className="tour-pick" value={w.id} onChange={(e) => choose(e.target.value)} aria-label="Choose a workflow">
         {groups.map((g) => (
           <optgroup key={g} label={g}>
@@ -191,7 +223,7 @@ function Section({ id, title, defaultOpen = false, children }) {
   );
 }
 
-export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial }) {
+export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial, onStartTour }) {
   const { state, dispatch } = useStore();
   const meds = useMeds();
   const elder = state.elders.find((e) => e.id === state.elderOnPhone);
@@ -242,20 +274,7 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial })
       </Section>
 
       <Section id="answers" title={`${elder.nameEn} answers (instead of speaking)`} defaultOpen>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          {GROUPS.map((g) => (
-            <div key={g.title} className="pgroup">
-              <span>{g.title}</span>
-              <div className="chips">
-                {g.keys.map((k) => (
-                  <button key={k} type="button" className="chip" disabled={!allowed.includes(k)} onClick={() => sayAsElder(k)}>
-                    {UTTERANCES[k].text || '(চুপ)'}<small>{UTTERANCES[k].en}</small>
-                  </button>
-                ))}
-              </div>
-            </div>
-          ))}
-        </div>
+        <AnswerChips phase={phase} />
       </Section>
 
       <Section id="voice" title="Live voice (microphone)">
@@ -280,7 +299,7 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial })
       </Section>
 
       <Section id="rehearse" title="Rehearsal workflows">
-        <Tour />
+        <Tour onStart={onStartTour} />
       </Section>
 
       <button type="button" className="btn" style={{ width: '100%' }} onClick={onTutorial}>Show the tutorial again</button>

@@ -5,6 +5,7 @@ import { doseStatus, dosesForDay } from '../lib/schedule.js';
 
 export const STATUS_LOOK = {
   upcoming: { label: 'বাকি', cls: '', icon: 'clock' },
+  before: { label: 'চালুর আগের সময়', cls: '', icon: 'clock' },
   due: { label: 'এখন সময়', cls: '', icon: 'clock' },
   snoozed: { label: 'পরে খাবেন', cls: 'warn', icon: 'clock' },
   taken: { label: 'খেয়েছেন', cls: 'ok', icon: 'check' },
