@@ -99,6 +99,11 @@
     "text": "আপনার উত্তর পাইনি, তাই আমি আপনার পরিবারকে জানাচ্ছি।",
     "when": "No response at +30 min, caregiver alerted"
   },
+  "next_medicine": {
+    "file": "audio/next_medicine.wav",
+    "text": "এবার পরের ওষুধটি। ছবিটা দেখে নিন। এটা কি খেয়েছেন?",
+    "when": "Another medicine is due at the same time: asked one at a time"
+  },
   "ack_taken": {
     "file": "audio/ack_taken.wav",
     "text": "ধন্যবাদ, লিখে রাখলাম।",
