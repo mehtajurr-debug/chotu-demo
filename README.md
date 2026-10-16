@@ -59,7 +59,7 @@ vite.config.js            runs /api/* inside the dev server (same handlers Verce
 - **Dose keys** look like `regimenId@day@slot` (as-needed: `regimenId@day@prn-<minute>`). Records live in `state.doses`.
 - **Elder phone** is a small state machine in `ElderPhone.jsx` (`idle → speak → listen → logged/readback/buttons → done`, plus `countdown`, `sent`, `ci-speak`, `ci-listen`). Timer callbacks read the latest state through refs.
 - **Voice.** Chotu's lines live in `lines.json`; clips are pre-generated into `audio/` with `generate_voice.py` (Gemini TTS) or `generate_voice_alt.mjs` (preview TTS models when the daily quota runs out), then `node rebuild_manifest.mjs`. Captions always show, with or without a clip.
-- **Understanding** is intent classification, not transcription: `api/understand.js` sends the clip to a Gemini Flash model with a fixed JSON schema and falls back between models when one is busy. Confidence below 0.6 is read back before logging.
+- **Understanding** is intent classification, not transcription: `api/understand.js` sends the clip to a Gemini Flash model with a fixed JSON schema and asks a second model if the first is slow. A "took" answer with confidence below 0.4 is read back before logging. If Gemini writes the words down right but labels them "other" or the opposite, word rules decide (a contradicted "took" is read back).
 - **Presenter-only controls** (top bar, panel, chips, guided tour) are part of the demo, not the product.
 
 ## Safety rules (do not break)

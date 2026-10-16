@@ -35,7 +35,7 @@ Rules:
 - Context matters. After "Did you take it?", a plain yes (হ্যাঁ, হ, জি, হুম) means took and a plain no means not_yet.
 - Judge the meaning, not perfect words: a half-heard "...খাইছি" or "হ... খাইলাম" is still took.
 - confidence is 0 to 1. Use 0.8 or more when the meaning is clear even if the words are informal or dialect.
-  Use below 0.6 only when the audio is really unclear, partly heard, or the meaning is ambiguous.
+  Use below 0.4 only when the audio is really unclear, partly heard, or the meaning is ambiguous.
 - transcript is your best Bangla transcription of what they said (short), in Bangla script. Empty if nothing was said.
 - Never give medical advice. Only classify.`;
 
@@ -79,12 +79,15 @@ export async function understand({ audio, mimeType = 'audio/wav', context = 'rem
     transcript: String(out.transcript || '').slice(0, 200),
     model: out.model,
   };
-  // Safety net: sometimes the words are heard right ("হু খাইছি তো") but the model still says "other".
-  // Then simple word rules decide, with low confidence, so Chotu reads it back before logging anything.
-  if (result.intent === 'other' && context === 'reminder') {
-    const said = result.transcript.normalize('NFC');
-    const guess = WORD_RULES.find(([, re]) => re.test(said));
-    if (guess) Object.assign(result, { intent: guess[0], confidence: 0.55, byRule: true });
+  // Safety net: sometimes the words are heard right ("হু খাইছি তো") but the model labels them "other",
+  // or even the opposite ("not_yet"). Then simple word rules on the written-down words decide.
+  // help / pain / emergency are never overridden.
+  const said = result.transcript.normalize('NFC');
+  const guess = context === 'reminder' ? WORD_RULES.find(([, re]) => re.test(said))?.[0] : null;
+  if (guess && result.intent === 'other') {
+    Object.assign(result, { intent: guess, confidence: 0.5, byRule: true }); // the words are clear: no read-back
+  } else if (guess && guess !== result.intent && ['took', 'not_yet', 'forgot'].includes(result.intent)) {
+    Object.assign(result, { intent: guess, confidence: 0.3, byRule: true }); // label and words disagree: a "took" is read back
   }
   return result;
 }

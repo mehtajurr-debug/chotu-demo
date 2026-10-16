@@ -18,6 +18,7 @@ import Icon from '../components/Icon.jsx';
 
 const LISTEN_MS = 9000; // how long Chotu waits for an answer (real seconds)
 const UNDO_MS = 5000; // time to say "না" after a dose is logged
+const UNSURE_BELOW = 0.4; // Gemini confidence below this counts as unsure: a "took" answer is read back first
 
 const seg = (() => {
   try { const s = new Intl.Segmenter('bn', { granularity: 'grapheme' }); return (t) => Array.from(s.segment(t), (x) => x.segment); }
@@ -138,7 +139,9 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         const r = await understandClip(wav, context);
         if (ac.signal.aborted) return;
         onHeard?.(r);
-        handleAnswer({ text: r.transcript || '…', intent: r.intent, lowConfidence: r.confidence < 0.6 });
+        // Below this, "took" is read back before logging. Kept low (16 Oct) so the free Gemini models' modest
+        // confidence doesn't make every answer a two-step one.
+        handleAnswer({ text: r.transcript || '…', intent: r.intent, lowConfidence: r.confidence < UNSURE_BELOW });
       } catch (e) {
         if (ac.signal.aborted) return;
         onHeard?.({ error: e.message });
