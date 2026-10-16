@@ -65,9 +65,35 @@ export function slotTime(elder, regimen, slot) {
   return hhmmToMin(meal) + MEAL_TIMING[regimen.meal].offset;
 }
 
+// ---------- days of the week ----------
+// Demo day 0 is Saturday 17 Oct 2026 (presentation day). Weekdays use JavaScript numbering: 0 = Sunday ... 6 = Saturday.
+export const DAY0_WEEKDAY = 6;
+export const weekdayOf = (day) => (((DAY0_WEEKDAY + day) % 7) + 7) % 7;
+export const WEEKDAY_BN = ['রবিবার', 'সোমবার', 'মঙ্গলবার', 'বুধবার', 'বৃহস্পতিবার', 'শুক্রবার', 'শনিবার'];
+export const WEEKDAY_SHORT = ['রবি', 'সোম', 'মঙ্গল', 'বুধ', 'বৃহঃ', 'শুক্র', 'শনি'];
+export const WEEK_ORDER = [6, 0, 1, 2, 3, 4, 5]; // the week starts on Saturday in Bangladesh
+
+/** Weekly schedule: only on some days of the week (e.g. D-Rise every Friday). No weekdays = every day. */
+export const isWeekly = (r) => Array.isArray(r.weekdays) && r.weekdays.length > 0 && r.weekdays.length < 7;
+
+/** "প্রতিদিন" or "প্রতি শুক্রবার" / "প্রতি শনিবার ও বুধবার". */
+export function daysText(r) {
+  if (!isWeekly(r)) return 'প্রতিদিন';
+  const names = WEEK_ORDER.filter((w) => r.weekdays.includes(w)).map((w) => WEEKDAY_BN[w]);
+  return `প্রতি ${names.length > 1 ? `${names.slice(0, -1).join(', ')} ও ${names.at(-1)}` : names[0]}`;
+}
+
+/** "আজ" / "আগামীকাল" / the weekday name for a day in the coming week. */
+export function dayWord(day, today) {
+  if (day === today) return 'আজ';
+  if (day === today + 1) return 'আগামীকাল';
+  return WEEKDAY_BN[weekdayOf(day)];
+}
+
 /** Is this regimen running on the given demo day? */
 export function activeOnDay(regimen, day) {
   if (regimen.status !== 'active') return false;
+  if (isWeekly(regimen) && !regimen.weekdays.includes(weekdayOf(day))) return false;
   const d = regimen.duration;
   if (!d || d.type === 'ongoing') return day >= regimen.startDay;
   const days = d.type === 'weeks' ? d.count * 7 : d.count;
@@ -144,17 +170,17 @@ export function lastTaken(regimenId, doses) {
 export function nextDoseGroup(elder, now, meds, doses = {}) {
   const open = (x) => !FINISHED.has(doses[x.key]?.status);
   const d = dayOf(now);
-  for (const day of [d, d + 1, d + 2]) {
+  for (let day = d; day <= d + 7; day++) { // a weekly medicine can be up to a week away
     const list = dosesForDay(elder, day, meds).filter((x) => x.at >= now && open(x));
     if (list.length) return list.filter((x) => x.at === list[0].at);
   }
   return [];
 }
 
-/** The next scheduled dose at or after `now` (looks ahead two days). */
+/** The next scheduled dose at or after `now` (looks ahead a week, for weekly medicines). */
 export function nextDose(elder, now, meds) {
   const d = dayOf(now);
-  for (const day of [d, d + 1, d + 2]) {
+  for (let day = d; day <= d + 7; day++) {
     const hit = dosesForDay(elder, day, meds).find((x) => x.at >= now);
     if (hit) return hit;
   }

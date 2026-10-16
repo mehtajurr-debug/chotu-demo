@@ -15,6 +15,7 @@ Each elder has their own phone and their own profile. One caregiver account can 
 
 ## Setup: by hand, or from a prescription photo (added 16 Oct at the user's request)
 Add medicine by name with autocomplete from the medicine library (name + packet image) -> confirm the image (if missing, upload a packet photo) -> schedule builder with big buttons: morning / noon / night, before or after meal, duration (days / weeks / ongoing), and an "as needed" switch showing minimum hours between doses and maximum per day -> optional attached prescription photo shown beside the schedule -> one-screen summary -> "Verify and activate" (primary caregiver only). Meal and sleep times live on each elder profile and turn "after breakfast" into clock times.
+Weekly medicines (added 16 Oct): a regimen may have `weekdays` (0 = Sunday ... 6 = Saturday); demo day 0 is Saturday 17 Oct 2026. Reminders, history, stock and summaries only count those days.
 Prescription photo (printed prescriptions only): Gemini reads only the Rx lines (api/prescription.js), rules in src/lib/rx.js match them to the library and flag doubts (different strength = no library photo, already on the list, weekly doses, missing meal or gap). The family checks every line; the primary caregiver still verifies and activates.
 
 ## Safety rules (never break these)

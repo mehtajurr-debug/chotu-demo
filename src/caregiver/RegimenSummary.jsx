@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { bn, bnTime } from '../lib/time.js';
-import { doseText, durationText, slotName, slotTime, timingText } from '../lib/schedule.js';
+import { daysText, doseText, durationText, slotName, slotTime, timingText } from '../lib/schedule.js';
 import { stockText } from '../lib/stock.js';
 
 export default function RegimenSummary({ elder, regimen, med, image }) {
@@ -37,6 +37,7 @@ export default function RegimenSummary({ elder, regimen, med, image }) {
             </>
           ) : (
             <>
+              <div className="kv"><span>কোন দিন</span><span style={{ fontWeight: 700 }}>{daysText(regimen)}</span></div>
               {regimen.slots.map((s) => (
                 <div key={s}>
                   <div style={{ fontSize: 21, fontWeight: 700, color: '#0B2F8A', lineHeight: 1.3 }}>{bnTime(slotTime(elder, regimen, s))}</div>

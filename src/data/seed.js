@@ -33,6 +33,9 @@ for (const day of HISTORY_DAYS) {
       : { status: 'taken', at: at + (LATE[key] ?? ((((day * 7 + h) % 6) + 6) % 6) + 2), how: 'voice', by: elderId };
   }
 }
+// Baba's weekly D-Rise (every Saturday morning; demo day 0 is a Saturday), taken each week so far
+for (const day of [-21, -14, -7]) OLDER_DOSES[`b4@${day}@morning`] = { status: 'taken', at: D(day, 8, 3), how: 'voice', by: 'baba' };
+
 // Ma's as-needed Napa Extra: about once a week at first, more often lately
 for (const [day, h, m] of [[-24, 15, 10], [-17, 16, 40], [-10, 11, 20], [-8, 17, 5], [-5, 15, 10], [-4, 12, 30], [-2, 11, 40]]) {
   OLDER_DOSES[`m3@${day}@prn-${D(day, h, m)}`] = { status: 'taken', at: D(day, h, m), how: 'button', by: 'ma' };
@@ -77,7 +80,7 @@ const PAST_ALERTS = [...MISSED_BEFORE].map((key, i) => {
 
 export function makeSeed() {
   return {
-    version: 14,
+    version: 15,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -101,6 +104,7 @@ export function makeSeed() {
         regimens: [
           { id: 'b1', medId: 'comet', amount: 1, stock: 20, refillDays: 5, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -28, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
           { id: 'b2', medId: 'angilock', amount: 1, stock: 6, refillDays: 5, slots: ['noon'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -28, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
+          { id: 'b4', medId: 'd-rise', amount: 1, stock: 4, refillDays: 7, slots: ['morning'], weekdays: [6], meal: 'after', duration: { type: 'weeks', count: 8 }, asNeeded: false, status: 'active', startDay: -21, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
           { id: 'b3', medId: 'rosuva', amount: 1, stock: 25, refillDays: 5, slots: ['night'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -28, verifiedBy: 'shumon', rxPhoto: null },
         ],
       },

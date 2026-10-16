@@ -42,10 +42,10 @@ export const TOUR = [
     id: 'took', group: 'Medicine reminders', title: 'Reminder answered by voice', view: 'both',
     setup: { clock: 480 },
     steps: [
-      'Elder: it is 8:00. Chotu speaks on Baba’s phone, then shows “শুনছি…”.',
+      'Elder: it is 8:00. Chotu speaks on Baba’s phone, then shows “শুনছি…”. Two medicines are due: Comet 500 (ওষুধ ১/২) and the weekly D-Rise (২/২, every Saturday).',
       'Elder: tap the chip “খেয়েছি” in this card (or say it, with the microphone on).',
-      'Elder: Chotu says “ধন্যবাদ, লিখে রাখলাম”. Zero taps on Baba’s phone.',
-      'Caregiver: the card turns green: “Comet 500 খেয়েছেন”.',
+      'Elder: Chotu says “ধন্যবাদ, লিখে রাখলাম” and moves to D-Rise. Tap “খেয়েছি” again. Zero taps on Baba’s phone.',
+      'Caregiver: the card turns green. In “বাবা” → “ওষুধ”, D-Rise shows “প্রতি শনিবার”.',
     ],
   },
   {

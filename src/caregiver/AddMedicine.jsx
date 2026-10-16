@@ -6,14 +6,14 @@ import { Label, PhotoButton, ScreenHeader, Stepper, Switch, Toggle } from '../co
 import Icon from '../components/Icon.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
 import ScanRx from './ScanRx.jsx';
-import { LIBRARY, MEAL_NAMES, SLOTS, customSlot, isCustom, medImage, slotTime } from '../lib/schedule.js';
-import { bn, bnTime, hhmmToMin } from '../lib/time.js';
+import { LIBRARY, MEAL_NAMES, SLOTS, WEEKDAY_SHORT, WEEK_ORDER, customSlot, isCustom, medImage, slotTime, weekdayOf } from '../lib/schedule.js';
+import { bn, bnTime, dayOf, hhmmToMin } from '../lib/time.js';
 
 const SAMPLE_RX = ['/img/rx/rx1.png', '/img/rx/rx2.png', '/img/rx/rx3.png'];
 
 const freshDraft = (elderId) => ({
   elderId, medId: null, custom: null, photo: null,
-  amount: 1, slots: [], meal: 'after', duration: { type: 'ongoing', count: 7 },
+  amount: 1, slots: [], weekdays: [], meal: 'after', duration: { type: 'ongoing', count: 7 },
   asNeeded: false, minGapHours: 6, maxPerDay: 3, rxPhoto: null,
   stock: 30, refillDays: 5, // how many tablets the family has now, and how many days ahead to warn
 });
@@ -39,7 +39,7 @@ export default function AddMedicine({ elderId, onDone, toast }) {
     }
     const regimenId = `r${Date.now()}`;
     const regimen = {
-      id: regimenId, medId, amount: d.amount, slots: d.asNeeded ? [] : d.slots, meal: d.meal, duration: d.duration,
+      id: regimenId, medId, amount: d.amount, slots: d.asNeeded ? [] : d.slots, weekdays: d.asNeeded ? [] : d.weekdays, meal: d.meal, duration: d.duration,
       asNeeded: d.asNeeded, minGapHours: d.minGapHours, maxPerDay: d.maxPerDay, rxPhoto: d.rxPhoto,
       photo: d.custom ? null : d.photo, startDay: 0, stock: d.stock, refillDays: d.refillDays,
     };
@@ -231,6 +231,7 @@ export function ScheduleStep({ elder, med, d, set, toast, onBack, onNext, nextLa
           </>
         ) : (
           <>
+            <WeekDays weekdays={d.weekdays} onChange={(weekdays) => set({ weekdays })} />
             <div>
               <Label>দিনের কোন সময়? (একাধিক বেছে নিতে পারেন)</Label>
               <div className="grid3" style={{ marginTop: 6 }}>
@@ -348,6 +349,33 @@ function CustomTimes({ slots, onChange }) {
           {custom.map((c) => (
             <button key={c} type="button" className="chip-sel on" onClick={() => onChange(slots.filter((x) => x !== c))} aria-label={`${bnTime(hhmmToMin(c.slice(3)))} সরিয়ে দিন`}>
               {bnTime(hhmmToMin(c.slice(3)))} ✕
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Every day, or only on chosen days of the week (e.g. a vitamin D capsule every Friday). */
+function WeekDays({ weekdays = [], onChange }) {
+  const { state } = useStore();
+  const today = weekdayOf(dayOf(state.clock));
+  const [weekly, setWeekly] = useState(weekdays.length > 0);
+  // At least one day stays chosen (no days would mean every day).
+  const toggle = (w) => onChange(weekdays.includes(w) ? (weekdays.length > 1 ? weekdays.filter((x) => x !== w) : weekdays) : [...weekdays, w]);
+  return (
+    <div>
+      <Label>কোন দিন খাবেন?</Label>
+      <div className="grid2" style={{ marginTop: 6 }}>
+        <Toggle on={!weekly} onClick={() => { setWeekly(false); onChange([]); }}>প্রতিদিন</Toggle>
+        <Toggle on={weekly} onClick={() => { setWeekly(true); if (!weekdays.length) onChange([today]); }} sub="যেমন সপ্তাহে একবার">নির্দিষ্ট দিনে</Toggle>
+      </div>
+      {weekly && (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap', marginTop: 8 }}>
+          {WEEK_ORDER.map((w) => (
+            <button key={w} type="button" className={'chip-sel' + (weekdays.includes(w) ? ' on' : '')} aria-pressed={weekdays.includes(w)} onClick={() => toggle(w)}>
+              {WEEKDAY_SHORT[w]}{w === today ? ' (আজ)' : ''}
             </button>
           ))}
         </div>

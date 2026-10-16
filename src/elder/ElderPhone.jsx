@@ -9,7 +9,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
 import { bnGreeting, bnTime, bnWhen, dayOf, bn as toBnNum } from '../lib/time.js';
-import { doseText, dosesForDay, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel, reminderSlot, timingText } from '../lib/schedule.js';
+import { dayWord, doseText, dosesForDay, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel, reminderSlot, timingText } from '../lib/schedule.js';
 import { hasClip, lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { QUESTIONS, answerText, checkinDue, interpret } from '../lib/checkin.js';
@@ -643,7 +643,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dis
   const [sheet, setSheet] = useState(null); // 'call' | 'out' | { done: text }
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
-  const tomorrow = next && dayOf(next.at) > dayOf(now);
+  const when = next && dayOf(next.at) > dayOf(now) ? dayWord(dayOf(next.at), dayOf(now)) : '';
   const prn = elder.regimens.filter((r) => r.asNeeded && r.status === 'active');
   const compact = group.length > 1 || prn.length > 0;
   const face = compact ? 120 : 150;
@@ -691,7 +691,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dis
       {next && (
         <div className="card" style={prn.length ? undefined : { marginTop: 'auto' }}>
           <div className="row">
-            <div className="t-label grow" style={{ fontSize: 16 }}>পরের ওষুধ{tomorrow ? ' · আগামীকাল' : ''}</div>
+            <div className="t-label grow" style={{ fontSize: 16 }}>পরের ওষুধ{when ? ` · ${when}` : ''}</div>
             <div style={{ fontSize: 19, fontWeight: 700, color: '#0B2F8A' }}>{bnTime(next.at)}</div>
           </div>
           {group.map((g) => (

@@ -2,7 +2,7 @@
 import { useEffect, useState } from 'react';
 import { useCaregiver, useMeds, useStore } from '../state/store.jsx';
 import { bn, bnGreeting, bnTime, dayOf } from '../lib/time.js';
-import { medImage, nextDoseGroup } from '../lib/schedule.js';
+import { medImage, nextDoseGroup, dayWord } from '../lib/schedule.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
@@ -66,7 +66,7 @@ const STATUS_ICON_COLOUR = { '': '#0B2F8A', ok: '#17633F', warn: '#7A4A00', bad:
 function ElderCard({ elder, now, meds, doses, alerts, caregivers, consent, checkins, onOpen }) {
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
-  const tomorrow = next && dayOf(next.at) > dayOf(now);
+  const when = next && dayOf(next.at) > dayOf(now) ? `${dayWord(dayOf(next.at), dayOf(now))} ` : '';
   const shares = consent?.medication !== false; // the elder agreed to share medicine status
   const ci = consent?.wellbeing !== false ? checkins?.[`${elder.id}@${dayOf(now)}`] : null; // today's afternoon check-in
   const head = headline(elder, now, meds, doses, alerts, caregivers, shares, ci); // an alert, or what just happened
@@ -77,7 +77,7 @@ function ElderCard({ elder, now, meds, doses, alerts, caregivers, consent, check
         <div className="grow">
           <div style={{ fontSize: 24, fontWeight: 700, lineHeight: 1.4 }}>{elder.name}</div>
           <div className="t-sub">
-            {next ? `পরের ওষুধ: ${tomorrow ? 'আগামীকাল ' : ''}${bnTime(next.at)}` : 'কোনো নির্ধারিত ওষুধ নেই'}
+            {next ? `পরের ওষুধ: ${when}${bnTime(next.at)}` : 'কোনো নির্ধারিত ওষুধ নেই'}
           </div>
         </div>
         <Icon name="chevron" size={24} color="#425A80" width={2} />

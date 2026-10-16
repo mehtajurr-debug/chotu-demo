@@ -1,8 +1,13 @@
 // Medicine stock: how many tablets the family has, how many days that lasts, and when to warn.
 import { bn } from './time.js';
+import { isWeekly } from './schedule.js';
 
 /** Tablets used per day by a schedule (as-needed medicines count as one a day for the estimate). */
-export const perDay = (r) => (r.asNeeded ? 1 : Math.max(1, r.slots.length) * (r.amount || 1));
+export const perDay = (r) => {
+  if (r.asNeeded) return 1;
+  const daily = Math.max(1, r.slots.length) * (r.amount || 1);
+  return isWeekly(r) ? (daily * r.weekdays.length) / 7 : daily; // weekly: spread over the week
+};
 
 /** Whole days the current stock lasts, or null when the stock is not tracked. */
 export const daysLeft = (r) => (r.stock == null ? null : Math.floor(r.stock / perDay(r)));

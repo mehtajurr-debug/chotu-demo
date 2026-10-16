@@ -7,7 +7,7 @@ import { bn } from './time.js';
 const words = (s) => String(s || '').toLowerCase().replace(/[^a-z0-9.\s/-]/g, ' ').split(/[\s/-]+/).filter(Boolean);
 const nums = (s) => (String(s || '').match(/\d+(\.\d+)?/g) || []).map(Number);
 const VARIANTS = ['plus', 'e', 'xr', 'd', 'extra', 'mr', 'sr'];
-const WEEKDAY_BN = { saturday: 'শনিবার', sunday: 'রবিবার', monday: 'সোমবার', tuesday: 'মঙ্গলবার', wednesday: 'বুধবার', thursday: 'বৃহস্পতিবার', friday: 'শুক্রবার' };
+const WEEKDAY_NUM = { sunday: 0, monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5, saturday: 6 };
 
 /**
  * Find the library medicine for a printed name. Returns { med, exact }.
@@ -62,7 +62,7 @@ export function draftsFromRx(medicines, elder, rxPhoto) {
 
     const meal = m.meal === 'before' ? 'before' : 'after';
     const base = {
-      elderId: elder.id, medId, custom, photo: null, meal, duration, rxPhoto,
+      elderId: elder.id, medId, custom, photo: null, meal, duration, rxPhoto, weekdays: [],
       asNeeded: false, minGapHours: 6, maxPerDay: 3, refillDays: 5,
       stock: m.form === 'injection' ? null : 30, // the family sets the real count; insulin is not counted in tablets
       printed: m.printed, confidence: m.confidence, libMatch: med?.name || null,
@@ -70,8 +70,13 @@ export function draftsFromRx(medicines, elder, rxPhoto) {
     if (m.confidence < 0.7) flags.push('এই লাইনটি পড়তে নিশ্চিত নয়, ছবির সঙ্গে মিলিয়ে নিন।');
 
     if (m.weekly) {
-      out.push({ ...base, key: `${idx}`, amount: 1, slots: [], include: false,
-        flags: [...flags, `সপ্তাহে একবার${m.weekday ? ` (${WEEKDAY_BN[m.weekday.toLowerCase()] || m.weekday})` : ''}: ছোটু এখনও সাপ্তাহিক মনে করাতে পারে না। পরিবার নিজে খেয়াল রাখুন।`] });
+      // e.g. "সপ্তাহে ১টি (শুক্রবার)": that day each week. No time on the prescription, so morning after breakfast.
+      const day = WEEKDAY_NUM[String(m.weekday || '').toLowerCase()];
+      const slots = [['morning', m.morning], ['noon', m.noon], ['night', m.night]].filter(([, a]) => a > 0).map(([s]) => s);
+      const wflags = [];
+      if (day == null) wflags.push('সপ্তাহের কোন দিন, লেখা নেই। “বদলান” চেপে দিন বেছে নিন।');
+      if (!slots.length) wflags.push('দিনের কোন সময়, লেখা নেই। সকালে খাবারের পরে ধরা হলো, দরকার হলে বদলান।');
+      out.push({ ...base, key: `${idx}`, amount: 1, slots: slots.length ? slots : ['morning'], weekdays: day != null ? [day] : [], include: day != null, flags: [...flags, ...wflags] });
       return;
     }
     if (m.asNeeded) {

@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import { useCaregiver, useMeds, useStore } from '../state/store.jsx';
 import { bn, bnTime, bnWhen, dayOf, hhmmToMin } from '../lib/time.js';
-import { MEAL_TIMING, durationText, isCustom, medImage, prnCheck, slotTime } from '../lib/schedule.js';
+import { MEAL_TIMING, daysText, durationText, isCustom, isWeekly, medImage, prnCheck, slotTime } from '../lib/schedule.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import Icon from '../components/Icon.jsx';
 import { STATUS_LOOK, alertLabel, todayDoses } from './status.js';
@@ -197,7 +197,7 @@ function Today({ elder, openAlert }) {
 function scheduleLine(elder, r) {
   if (r.asNeeded) return `প্রয়োজন হলে · কমপক্ষে ${bn(r.minGapHours)} ঘণ্টা পরপর, দিনে সর্বোচ্চ ${bn(r.maxPerDay)} বার`;
   const times = r.slots.map((s) => bnTime(slotTime(elder, r, s))).join(', ');
-  return `${times} · ${r.slots.every(isCustom) ? 'নির্দিষ্ট সময়ে' : MEAL_TIMING[r.meal].bn}`;
+  return `${isWeekly(r) ? `${daysText(r)} · ` : ''}${times} · ${r.slots.every(isCustom) ? 'নির্দিষ্ট সময়ে' : MEAL_TIMING[r.meal].bn}`;
 }
 
 function Medicines({ elder, onOpen, onAdd }) {

@@ -7,7 +7,7 @@ import { useCaregiver, useMeds, useStore } from '../state/store.jsx';
 import { MedThumb } from '../components/Phone.jsx';
 import { PhotoButton, ScreenHeader } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
-import { SLOTS, doseText, durationText, MEAL_TIMING } from '../lib/schedule.js';
+import { SLOTS, daysText, doseText, durationText, isWeekly, MEAL_TIMING } from '../lib/schedule.js';
 import { bn } from '../lib/time.js';
 import { draftsFromRx } from '../lib/rx.js';
 import { fileToSmallDataUrl, imageForReading } from '../lib/image.js';
@@ -67,7 +67,7 @@ export default function ScanRx({ elder, onBack, onDone, toast }) {
       const id = `r${Date.now()}-${n}`;
       ids.push({ id, name: med.short || med.name });
       dispatch({ type: 'regimen/add', elderId: elder.id, by: me.id, medName: med.short || med.name, regimen: {
-        id, medId, amount: d.amount, slots: d.asNeeded ? [] : d.slots, meal: d.meal, duration: d.duration,
+        id, medId, amount: d.amount, slots: d.asNeeded ? [] : d.slots, weekdays: d.asNeeded ? [] : d.weekdays || [], meal: d.meal, duration: d.duration,
         asNeeded: d.asNeeded, minGapHours: d.minGapHours, maxPerDay: d.maxPerDay, rxPhoto: d.rxPhoto,
         photo: d.custom ? null : d.photo, startDay: 0, stock: d.stock, refillDays: d.refillDays, fromRx: true,
       } });
@@ -175,7 +175,7 @@ function DraftCard({ d, med, onToggle, onEdit, onPhoto, toast, readOnly }) {
   const img = d.photo || (d.custom ? null : med?.image);
   const when = d.asNeeded
     ? `প্রয়োজন হলে · দিনে সর্বোচ্চ ${bn(d.maxPerDay)} বার`
-    : d.slots.length ? `${d.slots.map((s) => SLOTS[s]?.bn || s).join(' + ')} · ${doseText(d.amount, med?.form)} · ${MEAL_TIMING[d.meal].bn}` : 'সময় বেছে নিন';
+    : d.slots.length ? `${isWeekly(d) ? `${daysText(d)} · ` : ''}${d.slots.map((s) => SLOTS[s]?.bn || s).join(' + ')} · ${doseText(d.amount, med?.form)} · ${MEAL_TIMING[d.meal].bn}` : 'সময় বেছে নিন';
   return (
     <div className="card" style={{ gap: 8, padding: 12, opacity: d.include || readOnly ? 1 : 0.6 }}>
       <div className="row" style={{ gap: 10, alignItems: 'flex-start' }}>
