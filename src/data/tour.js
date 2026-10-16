@@ -15,6 +15,7 @@ export const TOUR = [
       'Caregiver: tap “সকাল” (8:00, from Baba’s breakfast time). Leave “খাবারের পরে”. Set how many tablets are at home.',
       'Caregiver: tap “পরের ধাপ” to see the one-screen summary, then “যাচাই করে চালু করুন”.',
       'Caregiver: Baba’s card now shows Comet 500 + Ecosprin 75 at 8:00.',
+      'Tap “+10 min” in this card. Elder: at 8:00 Chotu asks about one medicine at a time: Comet 500 (ওষুধ ১/২) with a big photo, then after “খেয়েছি” Ecosprin 75 (ওষুধ ২/২).',
     ],
   },
   {

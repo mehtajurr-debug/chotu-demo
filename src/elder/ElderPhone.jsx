@@ -5,11 +5,12 @@
 //   dose due -> Chotu speaks -> listens -> logged to the caregiver timeline -> "ধন্যবাদ, লিখে রাখলাম।"
 //   Silence or a failed answer: "আমি ঠিক বুঝতে পারিনি, আবার বলবেন?" (max 2 tries), then buttons appear.
 //   A low-confidence answer is read back before logging.
+//   Several medicines at the same time: one at a time (big photo and name, "ওষুধ ১/২"), then straight on to the next.
 import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
-import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
-import { doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel, reminderSlot, timingText } from '../lib/schedule.js';
-import { lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
+import { bnGreeting, bnTime, bnWhen, dayOf, bn as toBnNum } from '../lib/time.js';
+import { doseText, dosesForDay, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel, reminderSlot, timingText } from '../lib/schedule.js';
+import { hasClip, lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { QUESTIONS, answerText, checkinDue, interpret } from '../lib/checkin.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
@@ -28,7 +29,8 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   const elder = useElder(state.elderOnPhone);
   const meds = useMeds();
   const now = state.clock;
-  const due = dueGroup(elder, now, meds, state.doses);
+  const group = dueGroup(elder, now, meds, state.doses); // every dose waiting for an answer now
+  const due = group.slice(0, 1); // Chotu asks about one medicine at a time
   const dueKey = due.map((d) => d.key).join('|');
   const offline = Boolean(state.unreachable?.[elder.id]); // presenter toggle: this phone can't be reached
   const consentOpen = state.showConsentFor === elder.id; // reminders wait while the elder is choosing
@@ -43,7 +45,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
 
   // Timer callbacks outlive renders, so they read the latest values through refs.
   const latest = useRef({});
-  latest.current = { state, elder, active, micOn };
+  latest.current = { state, elder, active, micOn, group, meds };
   const phaseRef = useRef('idle');
   const tries = useRef(0);
   const timers = useRef([]);
@@ -73,15 +75,25 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
     if (waiting) startReminder(due, level);
   }, [dueKey, phase, level, offline, consentOpen]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  function startReminder(group, lvl) {
+  function startReminder(one, lvl, isNext = false) {
     clearAll();
     tries.current = 0;
     lastLevel.current = lvl;
-    latest.current.active = group;
-    setActive(group);
+    latest.current.active = one;
+    setActive(one);
     setHeard('');
     go('speak');
-    say(lvl === 0 ? `reminder_${reminderSlot(group[0].slot)}` : `repeat_${lvl}`, listen);
+    // next_medicine has no recording yet on some days (free voice quota): the recorded 'ওষুধটি কি খেয়েছেন?' fits too
+    const nextLine = hasClip('next_medicine', latest.current.elder.id) ? 'next_medicine' : 'repeat_1';
+    say(isNext ? nextLine : lvl === 0 ? `reminder_${reminderSlot(one[0].slot)}` : `repeat_${lvl}`, listen);
+  }
+
+  /** After an answer: if another medicine is due now, ask about it straight away; otherwise finish. */
+  function nextOrFinish(ms) {
+    const { state: s, elder: el, meds: m } = latest.current;
+    const rest = dueGroup(el, s.clock, m, s.doses);
+    if (rest.length) return startReminder(rest.slice(0, 1), reminderLevel(rest, s.clock, s.doses), true);
+    finish(ms);
   }
 
   // At +30 the family was alerted: tell the elder, kindly. Later, when someone takes it, say so too.
@@ -182,13 +194,13 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
     // Logged straight away: no "say না to undo" step (decided 16 Oct). Unclear answers still get a read-back first.
     record('taken', how, `${names()} খেয়েছেন (${how === 'voice' ? 'কথায় বলেছেন' : 'বোতাম চেপেছেন'})`);
     go('speak');
-    say('ack_taken', () => finish(2000));
+    say('ack_taken', () => nextOrFinish(2000));
   }
 
   function notYet(how) {
     record('snoozed', how, `${names()}: “এখনও খাইনি” বলেছেন। ১০ মিনিট পরে আবার মনে করাবে`, { untilIn: 10 });
     go('speak');
-    say('ack_not_yet', () => finish(1500));
+    say('ack_not_yet', () => nextOrFinish(1500));
   }
 
   function forgot(how) {
@@ -201,10 +213,11 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
       alert: `${latest.current.elder.name} বলছেন ওষুধ খাওয়ার কথা মনে নেই। ছোটু অপেক্ষা করতে বলেছে, ওষুধ খেতে বলেনি। ${last}`,
     });
     go('speak');
-    say('ack_not_sure', () => finish(4000));
+    say('ack_not_sure', () => nextOrFinish(4000));
   }
 
   function help(how, what = '“সাহায্য চাই” বলেছেন') {
+    if (latest.current.group.length) latest.current.active = latest.current.group; // help covers every medicine due now
     const when = latest.current.active.length ? `ওষুধের সময় ${what} (${names()})` : what;
     record('help', how, when, { alert: `${latest.current.elder.name} ${what}` });
     go('speak');
@@ -441,7 +454,9 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         </div>
       )}
 
-      {active.length > 0 && <div className="card" style={{ padding: compact ? 10 : 14, gap: 10 }}>
+      {active.length === 1 && <OneMedicine d={active[0]} elder={elder} meds={meds} small={showButtons}
+        onZoom={() => setZoom({ src: medImage(active[0].regimen, active[0].med), name: active[0].med.short, sub: doseText(active[0].regimen.amount, active[0].med.form) })} />}
+      {active.length > 1 && <div className="card" style={{ padding: compact ? 10 : 14, gap: 10 }}>
         {active.map((d) => (
           <div key={d.key} className="row" style={{ gap: 14 }}>
             <MedThumb src={medImage(d.regimen, d.med)} alt={d.med.name} size={compact ? 64 : 112}
@@ -449,7 +464,6 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
             <div>
               <div style={{ fontSize: compact ? 21 : 26, fontWeight: 700, lineHeight: 1.3 }}>{d.med.short}</div>
               <div className="t-sub" style={{ fontSize: 17 }}>{doseText(d.regimen.amount, d.med.form)}</div>
-              {!compact && <span className="pill" style={{ marginTop: 6 }}>{timingText(d.regimen, d.slot)}</span>}
             </div>
           </div>
         ))}
@@ -478,6 +492,20 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
         জরুরি অবস্থা
       </button>
       {zoomEl}
+    </div>
+  );
+}
+
+/** The medicine Chotu is asking about now: a big photo and name, and "ওষুধ ১/২" when several are due at this time. */
+function OneMedicine({ d, elder, meds, small, onZoom }) {
+  const same = dosesForDay(elder, dayOf(d.at), meds).filter((x) => x.at === d.at);
+  const n = same.findIndex((x) => x.key === d.key) + 1;
+  return (
+    <div className="card one-med" style={{ padding: small ? 10 : 14 }}>
+      {same.length > 1 && <span className="pill one-med-n">ওষুধ {toBnNum(n)}/{toBnNum(same.length)}</span>}
+      <MedThumb src={medImage(d.regimen, d.med)} alt={d.med.name} size={small ? 96 : 168} onClick={onZoom} />
+      <div style={{ fontSize: small ? 24 : 30, fontWeight: 700, lineHeight: 1.25, textAlign: 'center' }}>{d.med.short}</div>
+      <div className="t-sub" style={{ fontSize: 18, textAlign: 'center' }}>{doseText(d.regimen.amount, d.med.form)} · {timingText(d.regimen, d.slot)}</div>
     </div>
   );
 }

@@ -26,6 +26,7 @@ if (typeof window !== 'undefined') setInterval(loadManifest, 30000);
 
 export const hasClips = () => Object.keys(manifest).length > 0;
 export const clipCount = () => Object.keys(manifest).length;
+export const hasClip = (id, elderId) => Boolean(manifest[clipId(id, elderId)]);
 
 // Browsers only allow sound after the first touch, click or key press on the page.
 let unlocked = false;

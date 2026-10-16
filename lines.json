@@ -20,6 +20,7 @@
     { "id": "ask_again", "when": "Elder said 'না' to the read-back", "text": "ঠিক আছে। ওষুধ কি খেয়েছেন?" },
     { "id": "no_response_family_told", "when": "No response at +30 min, caregiver alerted", "text": "আপনার উত্তর পাইনি, তাই আমি আপনার পরিবারকে জানাচ্ছি।" },
 
+    { "id": "next_medicine", "when": "Another medicine is due at the same time: asked one at a time", "text": "এবার পরের ওষুধটি। ছবিটা দেখে নিন। এটা কি খেয়েছেন?" },
     { "id": "ack_taken", "when": "Elder said খেয়েছি (logged straight away)", "text": "ধন্যবাদ, লিখে রাখলাম।" },
     { "id": "ack_not_yet", "when": "Tap: এখনও খাইনি", "text": "ঠিক আছে। একটু পরে আবার মনে করিয়ে দেব।" },
     { "id": "ack_not_sure", "when": "Tap: মনে নেই (never says to take the medicine)", "text": "একটু অপেক্ষা করুন। আমি আপনার পরিবারকে জানাচ্ছি, যাতে তাঁরা আপনার সঙ্গে কথা বলতে পারেন।" },

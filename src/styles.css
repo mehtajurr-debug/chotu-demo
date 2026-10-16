@@ -376,3 +376,7 @@ button { font-family: inherit; }
 .coach .chip { flex-shrink: 0; min-height: 40px; font-size: 15px; }
 .coach .chip small { display: none; }
 .coach .pgroup > span { font-size: 12px; }
+
+/* ---------- reminder: one medicine at a time ---------- */
+.one-med { align-items: center; gap: 8px; position: relative; }
+.one-med-n { position: absolute; top: 10px; right: 10px; font-size: 15px; font-weight: 700; background: #0B2F8A; color: #fff; }
