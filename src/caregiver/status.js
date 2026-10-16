@@ -23,7 +23,8 @@ export function todayDoses(elder, now, meds, doses) {
 export function headline(elder, now, meds, doses, alerts = [], caregivers = [], shares = true, checkin = null) {
   // An open alert beats everything else.
   const mine = alerts.filter((a) => a.elderId === elder.id && !a.resolvedAt).sort((a, b) => b.createdAt - a.createdAt);
-  const open = mine.find((a) => !a.handledBy);
+  const open = mine.find((a) => !a.handledBy && !NOTICES.has(a.kind));
+  const calm = mine.find((a) => !a.handledBy && NOTICES.has(a.kind));
   if (open) return { cls: 'bad', icon: 'alert', text: `সতর্কতা: ${alertLabel(open)}` };
   const handling = mine.find((a) => a.handledBy);
   if (handling) {
@@ -38,6 +39,7 @@ export function headline(elder, now, meds, doses, alerts = [], caregivers = [], 
   if (pick('conflict').length) return { cls: 'warn', icon: 'alert', text: `${names(pick('conflict'))}: দুইবার লেখা হয়েছে, মিলিয়ে দেখুন` };
   if (pick('due').length) return { cls: '', icon: 'clock', text: `এখন সময়: ${names(pick('due'))}` };
   if (pick('snoozed').length) return { cls: 'warn', icon: 'clock', text: `${names(pick('snoozed'))}: পরে খাবেন বলেছেন` };
+  if (calm) return { cls: 'warn', icon: 'alert', text: alertLabel(calm) };
   // Today's afternoon check-in (only passed in when the elder shares how they feel)
   const feel = checkin?.answers?.feeling;
   if (feel === 'pain') return { cls: 'warn', icon: 'alert', text: `আজ ব্যথার কথা বলেছেন${checkin.said?.feeling ? `: “${checkin.said.feeling}”` : ''}` };
@@ -58,6 +60,13 @@ export const ALERT_KIND = {
   help: 'সাহায্য চেয়েছেন',
   emergency: 'জরুরি অবস্থা',
   prn: 'প্রয়োজনের ওষুধের নিয়ম পার হয়েছে',
+  refill: 'ওষুধ কিনতে হবে',
+  call: 'ফোন করেছিলেন',
 };
+
+/** Alerts that are worth a look but are not urgent (amber, not red). */
+export const CALM_ALERTS = new Set(['missed', 'refill', 'call']);
+/** Notices that should not hide what is happening with today's doses. */
+const NOTICES = new Set(['refill', 'call']);
 
 export const alertLabel = (a) => (a.kind === 'missed' && a.unreachable ? 'ফোনে যোগাযোগ নেই' : ALERT_KIND[a.kind]);

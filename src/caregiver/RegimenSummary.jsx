@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { bn, bnTime } from '../lib/time.js';
-import { MEAL_TIMING, SLOTS, doseText, durationText, slotTime } from '../lib/schedule.js';
+import { doseText, durationText, slotName, slotTime, timingText } from '../lib/schedule.js';
+import { stockText } from '../lib/stock.js';
 
 export default function RegimenSummary({ elder, regimen, med, image }) {
   const [zoom, setZoom] = useState(false);
@@ -39,12 +40,18 @@ export default function RegimenSummary({ elder, regimen, med, image }) {
               {regimen.slots.map((s) => (
                 <div key={s}>
                   <div style={{ fontSize: 21, fontWeight: 700, color: '#0B2F8A', lineHeight: 1.3 }}>{bnTime(slotTime(elder, regimen, s))}</div>
-                  <div className="t-sub" style={{ fontSize: 15 }}>{SLOTS[s].bn}, {MEAL_TIMING[regimen.meal].bn}</div>
+                  <div className="t-sub" style={{ fontSize: 15 }}>{slotName(s)}, {timingText(regimen, s)}</div>
                 </div>
               ))}
             </>
           )}
           <div className="kv" style={{ marginTop: 4 }}><span>কত দিন</span><span>{durationText(regimen.duration)}</span></div>
+          {regimen.stock != null && regimen.status !== 'active' && (
+            <>
+              <div className="kv"><span>ঘরে আছে</span><span>{stockText(regimen)}</span></div>
+              <div className="kv"><span>কেনার কথা মনে করাবে</span><span>{bn(regimen.refillDays ?? 5)} দিনের বাকি থাকলে</span></div>
+            </>
+          )}
         </div>
 
         {regimen.rxPhoto ? (

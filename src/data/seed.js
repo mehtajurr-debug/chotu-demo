@@ -61,7 +61,7 @@ const PAST_ALERTS = [
 
 export function makeSeed() {
   return {
-    version: 12,
+    version: 13,
     clock: START_CLOCK,
     elderOnPhone: 'baba', // which elder the elder phone is showing
     caregiverOnPhone: 'shumon', // who is holding the caregiver phone
@@ -83,9 +83,9 @@ export function makeSeed() {
         checkinTime: '16:00', // afternoon check-in about health and habits
         alertOrder: ['shumon', 'ruma'],
         regimens: [
-          { id: 'b1', medId: 'comet', amount: 1, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
-          { id: 'b2', medId: 'angilock', amount: 1, slots: ['noon'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
-          { id: 'b3', medId: 'rosuva', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: null },
+          { id: 'b1', medId: 'comet', amount: 1, stock: 20, refillDays: 5, slots: ['morning'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
+          { id: 'b2', medId: 'angilock', amount: 1, stock: 6, refillDays: 5, slots: ['noon'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx1.png' },
+          { id: 'b3', medId: 'rosuva', amount: 1, stock: 25, refillDays: 5, slots: ['night'], meal: 'after', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: null },
         ],
       },
       {
@@ -99,9 +99,9 @@ export function makeSeed() {
         checkinTime: '16:00',
         alertOrder: ['shumon', 'ruma'],
         regimens: [
-          { id: 'm1', medId: 'osartil', amount: 1, slots: ['noon'], meal: 'before', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
-          { id: 'm2', medId: 'calbo-d', amount: 1, slots: ['night'], meal: 'after', duration: { type: 'weeks', count: 4 }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
-          { id: 'm3', medId: 'napa-extra', amount: 1, slots: [], meal: 'after', duration: { type: 'ongoing' }, asNeeded: true, minGapHours: 6, maxPerDay: 3, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm1', medId: 'osartil', amount: 1, stock: 18, refillDays: 5, slots: ['noon'], meal: 'before', duration: { type: 'ongoing' }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm2', medId: 'calbo-d', amount: 1, stock: 12, refillDays: 5, slots: ['night'], meal: 'after', duration: { type: 'weeks', count: 4 }, asNeeded: false, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
+          { id: 'm3', medId: 'napa-extra', amount: 1, stock: 8, refillDays: 3, slots: [], meal: 'after', duration: { type: 'ongoing' }, asNeeded: true, minGapHours: 6, maxPerDay: 3, status: 'active', startDay: -7, verifiedBy: 'shumon', rxPhoto: '/img/rx/rx2.png' },
         ],
       },
     ],

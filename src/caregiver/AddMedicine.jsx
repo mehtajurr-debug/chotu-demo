@@ -5,8 +5,8 @@ import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { Label, PhotoButton, ScreenHeader, Stepper, Switch, Toggle } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
-import { LIBRARY, MEAL_NAMES, SLOTS, medImage, slotTime } from '../lib/schedule.js';
-import { bnTime, hhmmToMin } from '../lib/time.js';
+import { LIBRARY, MEAL_NAMES, SLOTS, customSlot, isCustom, medImage, slotTime } from '../lib/schedule.js';
+import { bn, bnTime, hhmmToMin } from '../lib/time.js';
 
 const SAMPLE_RX = ['/img/rx/rx1.png', '/img/rx/rx2.png', '/img/rx/rx3.png'];
 
@@ -14,6 +14,7 @@ const freshDraft = (elderId) => ({
   elderId, medId: null, custom: null, photo: null,
   amount: 1, slots: [], meal: 'after', duration: { type: 'ongoing', count: 7 },
   asNeeded: false, minGapHours: 6, maxPerDay: 3, rxPhoto: null,
+  stock: 30, refillDays: 5, // how many tablets the family has now, and how many days ahead to warn
 });
 
 export default function AddMedicine({ elderId, onDone, toast }) {
@@ -39,7 +40,7 @@ export default function AddMedicine({ elderId, onDone, toast }) {
     const regimen = {
       id: regimenId, medId, amount: d.amount, slots: d.asNeeded ? [] : d.slots, meal: d.meal, duration: d.duration,
       asNeeded: d.asNeeded, minGapHours: d.minGapHours, maxPerDay: d.maxPerDay, rxPhoto: d.rxPhoto,
-      photo: d.custom ? null : d.photo, startDay: 0,
+      photo: d.custom ? null : d.photo, startDay: 0, stock: d.stock, refillDays: d.refillDays,
     };
     dispatch({ type: 'regimen/add', elderId: d.elderId, regimen, by: me.id, medName: med.short || med.name });
     if (me.primary) {
@@ -225,18 +226,31 @@ function ScheduleStep({ elder, med, d, set, toast, onBack, onNext }) {
                     sub={bnTime(slotTime(elder, d, s)).split(' ')[1]}>{SLOTS[s].bn}</Toggle>
                 ))}
               </div>
+              <CustomTimes slots={d.slots} onChange={(slots) => set({ slots })} />
             </div>
-            <div>
+            {d.slots.some((x) => !isCustom(x)) && <div>
               <Label>খাবারের আগে না পরে?</Label>
               <div className="grid2" style={{ marginTop: 6 }}>
                 <Toggle on={d.meal === 'before'} onClick={() => set({ meal: 'before' })} sub="৩০ মিনিট আগে">খাবারের আগে</Toggle>
                 <Toggle on={d.meal === 'after'} onClick={() => set({ meal: 'after' })} sub="১৫ মিনিট পরে">খাবারের পরে</Toggle>
               </div>
-            </div>
-            <MealTimes elder={elder} editing={editMeals} onEdit={() => setEditMeals((v) => !v)}
-              onChange={(meals) => dispatch({ type: 'elder/meals', elderId: elder.id, meals })} />
+            </div>}
+            {d.slots.some((x) => !isCustom(x)) && <MealTimes elder={elder} editing={editMeals} onEdit={() => setEditMeals((v) => !v)}
+              onChange={(meals) => dispatch({ type: 'elder/meals', elderId: elder.id, meals })} />}
           </>
         )}
+
+        <div>
+          <Label>এখন কতটি আছে? (ওষুধ শেষ হওয়ার আগে জানাতে)</Label>
+          <div style={{ marginTop: 6 }}><Stepper value={d.stock} min={0} max={300} unit={formWord(med)} onChange={(v) => set({ stock: v })} /></div>
+          <div className="row" style={{ gap: 6, marginTop: 6, flexWrap: 'wrap' }}>
+            {[10, 14, 30, 60].map((n) => <button key={n} type="button" className="chip-sel" onClick={() => set({ stock: n })}>{bn(n)}টি</button>)}
+          </div>
+          <div style={{ marginTop: 10 }}>
+            <Label>কত দিনের ওষুধ বাকি থাকলে জানাব?</Label>
+            <div style={{ marginTop: 6 }}><Stepper value={d.refillDays} min={1} max={30} unit="দিন" onChange={(v) => set({ refillDays: v })} /></div>
+          </div>
+        </div>
 
         <div>
           <Label>কত দিন চলবে?</Label>
@@ -298,6 +312,33 @@ export function MealTimes({ elder, editing, onEdit, onChange }) {
             : <span>{bnTime(hhmmToMin(elder.meals[k]))}</span>}
         </div>
       ))}
+    </div>
+  );
+}
+
+const formWord = (med) => (med?.form === 'capsule' ? 'ক্যাপসুল' : med?.form === 'injection' ? 'ইনজেকশন' : 'ট্যাবলেট');
+
+/** Exact clock times, for people whose day does not follow the usual meal times. */
+function CustomTimes({ slots, onChange }) {
+  const [time, setTime] = useState('22:00');
+  const custom = slots.filter(isCustom).sort();
+  const add = () => { const v = customSlot(time); if (!slots.includes(v)) onChange([...slots, v]); };
+  return (
+    <div className="card" style={{ padding: 10, gap: 8, marginTop: 8 }}>
+      <div style={{ fontSize: 15, fontWeight: 700, color: '#425A80' }}>অন্য সময় (যেকোনো নির্দিষ্ট সময়)</div>
+      <div className="row" style={{ gap: 8 }}>
+        <input id="custom-time" className="time-in grow" type="time" step="300" value={time} onChange={(e) => setTime(e.target.value)} aria-label="নির্দিষ্ট সময়" />
+        <button type="button" className="btn-wide" style={{ width: 'auto', minHeight: 48, fontSize: 17 }} onClick={add}>যোগ করুন</button>
+      </div>
+      {custom.length > 0 && (
+        <div className="row" style={{ gap: 6, flexWrap: 'wrap' }}>
+          {custom.map((c) => (
+            <button key={c} type="button" className="chip-sel on" onClick={() => onChange(slots.filter((x) => x !== c))} aria-label={`${bnTime(hhmmToMin(c.slice(3)))} সরিয়ে দিন`}>
+              {bnTime(hhmmToMin(c.slice(3)))} ✕
+            </button>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -1,6 +1,6 @@
 // Turns a regimen ("morning, after meal") into clock times using the elder's meal times.
 import MEDICINES from '../data/medicines.json';
-import { DAY, bn, dayOf, hhmmToMin } from './time.js';
+import { DAY, bn, dayOf, hhmmToMin, partOfDay } from './time.js';
 
 export const LIBRARY = MEDICINES;
 
@@ -36,8 +36,29 @@ export function durationText(d) {
   return `${bn(d.count)} ${d.type === 'weeks' ? 'সপ্তাহ' : 'দিন'}`;
 }
 
+// A slot is 'morning' | 'noon' | 'night' (from the elder's meal times) or a custom clock time 'at:HH:MM'.
+export const isCustom = (slot) => typeof slot === 'string' && slot.startsWith('at:');
+export const customSlot = (hhmm) => `at:${hhmm}`;
+
+/** Bangla name for when a dose is: সকাল / দুপুর / রাত (custom times get one from their clock time). */
+export function slotName(slot, minuteOfDay) {
+  if (!isCustom(slot)) return SLOTS[slot].bn;
+  return partOfDay(Math.floor(hhmmToMin(slot.slice(3)) / 60));
+}
+
+/** Which reminder line fits a slot: morning / noon / night. */
+export function reminderSlot(slot) {
+  if (!isCustom(slot)) return slot;
+  const h = Math.floor(hhmmToMin(slot.slice(3)) / 60);
+  return h < 12 && h >= 4 ? 'morning' : h < 17 && h >= 12 ? 'noon' : 'night';
+}
+
+/** "খাবারের পরে" for meal-based slots, "নির্দিষ্ট সময়ে" for a custom clock time. */
+export const timingText = (regimen, slot) => (isCustom(slot) ? 'নির্দিষ্ট সময়ে' : MEAL_TIMING[regimen.meal].bn);
+
 /** Clock minute-of-day for one slot of a regimen. */
 export function slotTime(elder, regimen, slot) {
+  if (isCustom(slot)) return hhmmToMin(slot.slice(3));
   const meal = elder.meals[SLOTS[slot].meal];
   return hhmmToMin(meal) + MEAL_TIMING[regimen.meal].offset;
 }

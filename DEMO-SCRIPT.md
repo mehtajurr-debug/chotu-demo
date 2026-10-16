@@ -55,6 +55,9 @@ Tip: the **Next dose** button greys out while Chotu is talking ("wait: Chotu is 
 - **Do not claim** that it understands every Bangla dialect. We tested with a few synthetic voices only. Report the real hit rate from the 10-clip accent test with volunteer voices before saying anything about accuracy.
 
 ## Other things you can show if there is time
+- **Exact times:** when adding a medicine, "অন্য সময়" takes any clock time (e.g. 10:00 PM) for people whose day doesn't follow meal times. Demo settings → Time → **Go to** jumps the clock straight there.
+- **Running low:** each dose taken counts the tablets down. Baba has 6 Angilock Plus; after his noon dose (Go to 2:00 PM) Shumon gets an amber **ওষুধ কিনতে হবে** alert. Tap **কিনেছি, ৩০টি যোগ করুন** to close it.
+- **Elder buttons:** on the elder phone, **ওষুধ শেষ হয়ে গেছে** (tap the medicine photo) tells the family; **পরিবারকে ফোন** lets Baba pick who to call by photo. Say that the call is simulated in the demo.
 - Demo settings: **Afternoon check-in now** starts the check-in at any time (without moving the clock).
 - Caregiver: Baba's dashboard shows today's **বিকেলের কথা**; on the **প্রোফাইল** tab the check-in time can be changed (default 4:00 PM).
 - Switch the Demo settings to **Rumana**: she can add a medicine, but only Shumon can activate it (**যাচাই বাকি**).

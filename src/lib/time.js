@@ -15,7 +15,7 @@ export function hhmmToMin(s) {
 }
 
 /** Bangla part of day, the way people say it. */
-function partOfDay(h) {
+export function partOfDay(h) {
   if (h >= 5 && h < 12) return 'সকাল';
   if (h >= 12 && h < 16) return 'দুপুর';
   if (h >= 16 && h < 18) return 'বিকাল';

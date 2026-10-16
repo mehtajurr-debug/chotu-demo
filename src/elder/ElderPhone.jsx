@@ -8,7 +8,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useElder, useMeds, useStore } from '../state/store.jsx';
 import { bnGreeting, bnTime, bnWhen, dayOf } from '../lib/time.js';
-import { MEAL_TIMING, doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel } from '../lib/schedule.js';
+import { doseText, dueGroup, lastTaken, medImage, nextDoseGroup, prnCheck, reminderLevel, reminderSlot, timingText } from '../lib/schedule.js';
 import { lineText, onElderSays, speak, stopSpeaking } from '../lib/voice.js';
 import { recordAnswer, understandClip } from '../lib/mic.js';
 import { QUESTIONS, answerText, checkinDue, interpret } from '../lib/checkin.js';
@@ -81,7 +81,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
     setActive(group);
     setHeard('');
     go('speak');
-    say(lvl === 0 ? `reminder_${group[0].slot}` : `repeat_${lvl}`, listen);
+    say(lvl === 0 ? `reminder_${reminderSlot(group[0].slot)}` : `repeat_${lvl}`, listen);
   }
 
   // At +30 the family was alerted: tell the elder, kindly. Later, when someone takes it, say so too.
@@ -397,7 +397,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
   if (phase === 'countdown') return <Countdown n={count} onCancel={() => cancelEmergency('button')} />;
   if (phase === 'sent') return <Sent elder={elder} alert={emergencyAlert} toast={toast} onBack={() => { clearAll(); go('idle'); }} />;
   const zoomEl = zoom && <MedZoom {...zoom} onClose={() => setZoom(null)} />;
-  if (phase === 'idle') return <>{<Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} onZoom={setZoom} />}{zoomEl}</>;
+  if (phase === 'idle') return <>{<Idle elder={elder} now={now} meds={meds} doses={state.doses} onEmergency={emergency} onPrn={takePrn} onZoom={setZoom} carers={state.caregivers} dispatch={dispatch} />}{zoomEl}</>;
 
   const listening = ['listen', 'readback', 'logged', 'buttons', 'ci-listen'].includes(phase);
   const inCheckin = phase === 'ci-speak' || phase === 'ci-listen';
@@ -461,7 +461,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
             <div>
               <div style={{ fontSize: compact ? 21 : 26, fontWeight: 700, lineHeight: 1.3 }}>{d.med.short}</div>
               <div className="t-sub" style={{ fontSize: 17 }}>{doseText(d.regimen.amount, d.med.form)}</div>
-              {!compact && <span className="pill" style={{ marginTop: 6 }}>{MEAL_TIMING[d.regimen.meal].bn}</span>}
+              {!compact && <span className="pill" style={{ marginTop: 6 }}>{timingText(d.regimen, d.slot)}</span>}
             </div>
           </div>
         ))}
@@ -478,7 +478,7 @@ export default function ElderPhone({ toast, onPhase, micOn, onHeard }) {
             </button>
           </div>
           <button type="button" className="answer small" onClick={() => {
-            clearAll(); go('speak'); say(`reminder_${active[0].slot}`, () => { go('buttons'); });
+            clearAll(); go('speak'); say(`reminder_${reminderSlot(active[0].slot)}`, () => { go('buttons'); });
           }}>
             <Icon name="speaker" size={20} /> আবার শুনুন
           </button>
@@ -623,13 +623,14 @@ function Offline({ elder }) {
 }
 
 /** Resting screen: greeting, Chotu's face, next medicine. */
-function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom }) {
+function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom, carers, dispatch }) {
+  const [sheet, setSheet] = useState(null); // 'call' | 'out' | { done: text }
   const group = nextDoseGroup(elder, now, meds, doses);
   const next = group[0];
   const tomorrow = next && dayOf(next.at) > dayOf(now);
   const prn = elder.regimens.filter((r) => r.asNeeded && r.status === 'active');
   const compact = group.length > 1 || prn.length > 0;
-  const face = compact ? 150 : 176;
+  const face = compact ? 120 : 150;
 
   return (
     <div className="scr elder">
@@ -639,6 +640,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom }) {
         <span className="pill white">{bnTime(now)}</span>
       </div>
 
+      {sheet ? <ElderSheet sheet={sheet} elder={elder} meds={meds} carers={carers} dispatch={dispatch} onSheet={setSheet} /> : <>
       <div style={{ textAlign: 'center', marginTop: 10 }}>
         <div style={{ fontSize: 34, fontWeight: 700, color: '#0B2F8A', lineHeight: 1.4 }}>
           {bnGreeting(now)}, {elder.name}
@@ -648,7 +650,7 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom }) {
         </div>
       </div>
 
-      <div style={{ display: 'flex', justifyContent: 'center', marginTop: compact ? 30 : 52, marginBottom: compact ? 20 : 40 }}>
+      <div style={{ display: 'flex', justifyContent: 'center', marginTop: compact ? 26 : 44, marginBottom: compact ? 16 : 32 }}>
         <div className="face" style={{ width: face, height: face }}>
           <div className="ring" style={{ inset: -24 }} />
           <div className="ring" style={{ inset: -48, animationDelay: '.6s' }} />
@@ -682,17 +684,81 @@ function Idle({ elder, now, meds, doses, onEmergency, onPrn, onZoom }) {
                 onClick={() => onZoom({ src: medImage(g.regimen, g.med), name: g.med.short, sub: doseText(g.regimen.amount, g.med.form) })} />
               <div>
                 <div style={{ fontSize: 21, fontWeight: 700, lineHeight: 1.35 }}>{g.med.short}</div>
-                <div className="t-sub">{doseText(g.regimen.amount, g.med.form)}, {MEAL_TIMING[g.regimen.meal].bn}</div>
+                <div className="t-sub">{doseText(g.regimen.amount, g.med.form)}, {timingText(g.regimen, g.slot)}</div>
               </div>
             </div>
           ))}
         </div>
       )}
 
-      <button type="button" className="big-btn sos" style={next ? undefined : { marginTop: 'auto' }} onClick={onEmergency}>
+      <div className="row" style={{ gap: 10, flexShrink: 0, ...(next || prn.length ? {} : { marginTop: 'auto' }) }}>
+        <button type="button" className="answer small grow" style={{ minHeight: 64, flex: 1 }} onClick={() => setSheet('call')}>
+          <Icon name="phone" size={22} /> পরিবারকে ফোন
+        </button>
+        <button type="button" className="answer small grow" style={{ minHeight: 64, flex: 1 }} onClick={() => setSheet('out')}>
+          ওষুধ শেষ হয়ে গেছে
+        </button>
+      </div>
+      </>}
+
+      <button type="button" className="big-btn sos" style={sheet ? { marginTop: 'auto' } : undefined} onClick={onEmergency}>
         <Icon name="alert" size={27} />
         জরুরি অবস্থা
       </button>
+    </div>
+  );
+}
+
+/** Elder: call someone in the family, or say a medicine has run out. Big photos, one tap each. */
+function ElderSheet({ sheet, elder, meds, carers, dispatch, onSheet }) {
+  const back = (
+    <button type="button" className="answer" style={{ marginTop: 'auto' }} onClick={() => onSheet(null)}>
+      <Icon name="back" size={24} /> ফিরে যান
+    </button>
+  );
+  if (sheet.done) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 18, flex: 1, textAlign: 'center', alignItems: 'center', justifyContent: 'center' }}>
+        {sheet.photo && <img className="av" src={sheet.photo} alt="" width="120" height="120" style={{ width: 120, height: 120 }} />}
+        <div className="caption" style={{ fontSize: 30, fontWeight: 700, color: '#0B2F8A', lineHeight: 1.4 }}>{sheet.done}</div>
+        {sheet.sub && <div style={{ fontSize: 20, color: '#425A80', lineHeight: 1.4 }}>{sheet.sub}</div>}
+        <button type="button" className={'answer' + (sheet.calling ? '' : ' yes')} style={{ width: '100%', marginTop: 'auto' }} onClick={() => onSheet(null)}>
+          {sheet.calling ? 'ফোন রেখে দিন' : 'ঠিক আছে'}
+        </button>
+      </div>
+    );
+  }
+  if (sheet === 'call') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 12, flex: 1 }}>
+        <div style={{ fontSize: 28, fontWeight: 700, color: '#0B2F8A', textAlign: 'center', marginTop: 8 }}>কাকে ফোন করবেন?</div>
+        {carers.map((c) => (
+          <button key={c.id} type="button" className="answer" style={{ justifyContent: 'flex-start', gap: 14, minHeight: 88, fontSize: 26 }}
+            onClick={() => { dispatch({ type: 'elder/call', elderId: elder.id, to: c.id }); onSheet({ done: `${c.name}কে ফোন করা হচ্ছে…`, sub: 'ডেমো: আসলে কল হয় না, শুধু তাঁকে জানানো হলো', photo: c.photo, calling: true }); }}>
+            <Avatar person={c} size={64} /> {c.name} <span style={{ fontSize: 18, color: '#425A80', fontWeight: 500 }}>({c.relation})</span>
+          </button>
+        ))}
+        {back}
+      </div>
+    );
+  }
+  const active = elder.regimens.filter((r) => r.status === 'active');
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10, flex: 1, minHeight: 0 }}>
+      <div style={{ fontSize: 26, fontWeight: 700, color: '#0B2F8A', textAlign: 'center', marginTop: 6, lineHeight: 1.35 }}>কোন ওষুধ শেষ হয়ে গেছে?</div>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, overflow: 'auto' }}>
+        {active.map((r) => {
+          const m = meds[r.medId];
+          return (
+            <button key={r.id} type="button" className="answer" style={{ flexDirection: 'column', minHeight: 150, gap: 6 }}
+              onClick={() => { dispatch({ type: 'elder/reportOut', elderId: elder.id, regimenId: r.id, medName: m?.short }); onSheet({ done: 'ধন্যবাদ। পরিবারকে জানিয়ে দিলাম।', sub: `${m?.short} কিনে আনার কথা বলা হয়েছে।` }); }}>
+              <MedThumb src={medImage(r, m)} alt="" size={84} />
+              {m?.short}
+            </button>
+          );
+        })}
+      </div>
+      {back}
     </div>
   );
 }

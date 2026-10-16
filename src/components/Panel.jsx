@@ -221,6 +221,7 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial })
           <button className="btn" type="button" onClick={() => advance(30)}>+30 min</button>
           <button className="btn" type="button" onClick={() => advance(60)}>+1 hour</button>
         </div>
+        <GoToTime clock={state.clock} onGo={advance} />
         <button className="btn" type="button" style={{ width: '100%' }} onClick={() => dispatch({ type: 'reset' })}>Reset demo</button>
       </Section>
 
@@ -283,6 +284,23 @@ export default function Panel({ phase, micOn, setMicOn, lastHeard, onTutorial })
       </Section>
 
       <button type="button" className="btn" style={{ width: '100%' }} onClick={onTutorial}>Show the tutorial again</button>
+    </div>
+  );
+}
+
+/** Jump the demo clock to a time of day. Time only moves forward: an earlier time means tomorrow. */
+function GoToTime({ clock, onGo }) {
+  const [time, setTime] = useState('16:00');
+  const [h, m] = time.split(':').map(Number);
+  const target = h * 60 + m;
+  const now = clock % 1440;
+  const minutes = target > now ? target - now : target + 1440 - now;
+  return (
+    <div className="row-btns" style={{ alignItems: 'center' }}>
+      <input id="goto-time" type="time" className="tour-pick" value={time} onChange={(e) => e.target.value && setTime(e.target.value)} aria-label="Go to time" style={{ flex: 1 }} />
+      <button className="btn" type="button" style={{ flex: 1 }} onClick={() => onGo(minutes)}>
+        Go to {target > now ? 'today' : 'tomorrow'}
+      </button>
     </div>
   );
 }

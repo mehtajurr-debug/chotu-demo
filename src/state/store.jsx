@@ -5,6 +5,7 @@ import { dosesForDay, medMap, prnCheck } from '../lib/schedule.js';
 import { checkinAt, checkinKey } from '../lib/checkin.js';
 import { bn, bnTime } from '../lib/time.js';
 import { raiseAlert, runEscalation } from './escalation.js';
+import { daysLeft, isLow } from '../lib/stock.js';
 
 const KEY = 'chotu-demo-state';
 
@@ -28,7 +29,44 @@ const updateElder = (state, elderId, fn) => ({
 const logEntry = (state, entry) => ({ ...state, log: [...state.log, { at: state.clock, ...entry }] });
 const isPrimary = (state, id) => state.caregivers.some((c) => c.id === id && c.primary);
 
+/** Raise one "কিনতে হবে" alert for a medicine, unless one is already open. Goes to the first person in the alert order. */
+function refillAlert(state, elderId, regimenId, text) {
+  const key = `${regimenId}@stock`;
+  if (state.alerts.some((a) => a.kind === 'refill' && !a.resolvedAt && a.doseKeys[0] === key)) return state;
+  return raiseAlert(state, { elderId, kind: 'refill', at: state.clock, ladder: false, level: 0, doseKeys: [key], text });
+}
+
+/** After any change, count down tablets for doses newly marked as taken and warn when a medicine runs low. */
+function countStock(prev, next) {
+  if (next.doses === prev.doses) return next;
+  const used = {};
+  for (const [k, rec] of Object.entries(next.doses)) {
+    if (rec.status !== 'taken' || prev.doses[k]?.status === 'taken') continue;
+    const id = k.split('@')[0];
+    used[id] = (used[id] || 0) + 1;
+  }
+  let s = next;
+  for (const [id, n] of Object.entries(used)) {
+    const elder = s.elders.find((e) => e.regimens.some((r) => r.id === id));
+    const r = elder?.regimens.find((x) => x.id === id);
+    if (!r || r.stock == null) continue;
+    const after = { ...r, stock: Math.max(0, r.stock - n * (r.amount || 1)) };
+    s = updateElder(s, elder.id, (e) => ({ ...e, regimens: e.regimens.map((x) => (x.id === id ? after : x)) }));
+    if (isLow(after) && !isLow(r)) {
+      const med = medMap(s)[r.medId];
+      const left = after.stock <= 0 ? 'শেষ হয়ে গেছে' : `আর ${bn(after.stock)}টি আছে, প্রায় ${bn(daysLeft(after))} দিনের`;
+      s = refillAlert(s, elder.id, id, `${elder.gen} ${med?.short || 'ওষুধ'} ${left}। কিনে রাখুন।`);
+    }
+  }
+  return s;
+}
+
 function reducer(state, action) {
+  if (action.type === 'reset' || action.type === 'demo/setup') return baseReducer(state, action);
+  return countStock(state, baseReducer(state, action));
+}
+
+function baseReducer(state, action) {
   switch (action.type) {
     case 'clock/advance':
       return runEscalation({ ...state, clock: state.clock + action.minutes });
@@ -196,6 +234,27 @@ function reducer(state, action) {
         }
       }
       return { ...s, doses };
+    }
+
+    // The family bought more: add to the count and close any "কিনতে হবে" alert for this medicine.
+    case 'stock/add': {
+      let s = updateElder(state, action.elderId, (e) => ({ ...e, regimens: e.regimens.map((r) => (r.id === action.regimenId ? { ...r, stock: Math.max(0, r.stock ?? 0) + action.count } : r)) }));
+      s = { ...s, alerts: s.alerts.map((a) => (a.kind === 'refill' && !a.resolvedAt && a.doseKeys[0] === `${action.regimenId}@stock` ? { ...a, resolvedAt: state.clock, handledBy: a.handledBy || action.by, handledAt: a.handledAt ?? state.clock } : a)) };
+      return logEntry(s, { elderId: action.elderId, by: action.by, kind: 'setup', text: `${action.medName}: ${bn(action.count)}টি কেনা হয়েছে, হিসাবে যোগ হলো` });
+    }
+    // The elder says a medicine has run out. Set the count to zero and tell the family.
+    case 'elder/reportOut': {
+      const elder = state.elders.find((e) => e.id === action.elderId);
+      let s = updateElder(state, elder.id, (e) => ({ ...e, regimens: e.regimens.map((r) => (r.id === action.regimenId ? { ...r, stock: 0 } : r)) }));
+      s = logEntry(s, { elderId: elder.id, by: elder.id, kind: 'alert', text: `জানিয়েছেন: ${action.medName} শেষ হয়ে গেছে` });
+      return refillAlert(s, elder.id, action.regimenId, `${elder.name} জানিয়েছেন ${action.medName} শেষ হয়ে গেছে। নতুন ওষুধ কিনে দিতে হবে।`);
+    }
+    // The elder wants to talk to someone in the family (demo: no real call is made).
+    case 'elder/call': {
+      const elder = state.elders.find((e) => e.id === action.elderId);
+      const who = state.caregivers.find((c) => c.id === action.to);
+      const s = logEntry(state, { elderId: elder.id, by: elder.id, kind: 'call', text: `${who.name}কে ফোন করেছেন` });
+      return raiseAlert(s, { elderId: elder.id, kind: 'call', at: state.clock, ladder: false, to: who.id, text: `${elder.name} আপনাকে ফোন করেছিলেন। সময় পেলে ফোন করুন।` });
     }
 
     case 'reset':

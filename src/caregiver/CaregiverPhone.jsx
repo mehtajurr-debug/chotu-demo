@@ -10,7 +10,8 @@ import AddMedicine from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
 import ElderDay from './ElderDay.jsx';
 import { STATUS_LOOK, headline, todayDoses } from './status.js';
-import { SLOTS } from '../lib/schedule.js';
+import { slotName } from '../lib/schedule.js';
+import { minOfDay } from '../lib/time.js';
 import { AlertBanner, AlertDetail, AlertsList, unseenAlerts } from './Alerts.jsx';
 import Settings from './Settings.jsx';
 import Summary from './Summary.jsx';
@@ -112,7 +113,7 @@ function DayPills({ elder, now, meds, doses }) {
     <div className="day-pills" aria-label="আজকের ওষুধ">
       {[...byTime.values()].map((d) => (
         <span key={d.at} className={'dp ' + (d.status === 'upcoming' ? 'up' : STATUS_LOOK[d.status].cls)}>
-          {d.status === 'taken' && <Icon name="check" size={13} width={3} />}{SLOTS[d.slot].bn}
+          {d.status === 'taken' && <Icon name="check" size={13} width={3} />}{slotName(d.slot, minOfDay(d.at))}
         </span>
       ))}
     </div>

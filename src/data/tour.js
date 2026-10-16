@@ -120,6 +120,36 @@ export const TOUR = [
     ],
   },
   {
+    id: 'custom', group: 'Times and stock', title: 'Exact time and stock count',
+    setup: { clock: 470 },
+    steps: [
+      'Caregiver phone: “ওষুধ যোগ করুন” → “মা” → Ecosprin 75 → “হ্যাঁ, এটাই”.',
+      'Under “অন্য সময়” pick 10:00 PM and tap “যোগ করুন”. With only an exact time, the before/after-meal question hides.',
+      'Set “এখন কতটি আছে?” (e.g. 30) and when to warn (5 days). “পরের ধাপ” → “যাচাই করে চালু করুন”.',
+      'Demo settings → Time: type 10:00 PM and tap “Go to today”. Ma’s phone reminds her about Ecosprin.',
+    ],
+  },
+  {
+    id: 'refill', group: 'Times and stock', title: 'Running low: “ওষুধ কিনতে হবে”',
+    setup: { clock: 470, elder: 'ma' },
+    steps: [
+      'Baba has 6 Angilock Plus left (one a day). Every dose taken counts down.',
+      'Demo settings → Time: Go to 2:00 PM. Baba takes his noon dose, 5 are left, which is his family’s warning point.',
+      'Shumon gets an amber “ওষুধ কিনতে হবে” alert (not urgent, no escalation). Baba’s card and medicine list show it too.',
+      'Open it and tap “কিনেছি, ৩০টি যোগ করুন”. The count goes up and the alert closes.',
+    ],
+  },
+  {
+    id: 'elder-report', group: 'Times and stock', title: 'Elder: “ওষুধ শেষ হয়ে গেছে” and call family',
+    setup: { clock: 470 },
+    steps: [
+      'Baba’s phone: tap “ওষুধ শেষ হয়ে গেছে” and tap a medicine photo. Chotu says it told the family.',
+      'Shumon gets “ওষুধ কিনতে হবে: বাবা জানিয়েছেন … শেষ হয়ে গেছে”.',
+      'Baba’s phone: tap “পরিবারকে ফোন” and pick শুমন or রুমানা by photo. (Demo: no real call.)',
+      'Only the person he picked gets “বাবা আপনাকে ফোন করেছিলেন”.',
+    ],
+  },
+  {
     id: 'unreachable', group: 'Settings and privacy', title: 'Phone unreachable',
     setup: { clock: 470, unreachable: 'baba' },
     steps: [

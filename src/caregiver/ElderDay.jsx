@@ -4,12 +4,13 @@
 import { useState } from 'react';
 import { useCaregiver, useMeds, useStore } from '../state/store.jsx';
 import { bn, bnTime, bnWhen, dayOf, hhmmToMin } from '../lib/time.js';
-import { MEAL_TIMING, durationText, medImage, prnCheck, slotTime } from '../lib/schedule.js';
+import { MEAL_TIMING, durationText, isCustom, medImage, prnCheck, slotTime } from '../lib/schedule.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import Icon from '../components/Icon.jsx';
 import { STATUS_LOOK, alertLabel, todayDoses } from './status.js';
 import { MealTimes } from './AddMedicine.jsx';
 import RegimenSummary from './RegimenSummary.jsx';
+import { isLow, stockText } from '../lib/stock.js';
 import { CHECKIN_WINDOW, QUESTIONS, answerLook, answerText, checkinAt, checkinKey } from '../lib/checkin.js';
 
 const PILL_COLOURS = {
@@ -196,7 +197,7 @@ function Today({ elder, openAlert }) {
 function scheduleLine(elder, r) {
   if (r.asNeeded) return `প্রয়োজন হলে · কমপক্ষে ${bn(r.minGapHours)} ঘণ্টা পরপর, দিনে সর্বোচ্চ ${bn(r.maxPerDay)} বার`;
   const times = r.slots.map((s) => bnTime(slotTime(elder, r, s))).join(', ');
-  return `${times} · ${MEAL_TIMING[r.meal].bn}`;
+  return `${times} · ${r.slots.every(isCustom) ? 'নির্দিষ্ট সময়ে' : MEAL_TIMING[r.meal].bn}`;
 }
 
 function Medicines({ elder, onOpen, onAdd }) {
@@ -213,6 +214,11 @@ function Medicines({ elder, onOpen, onAdd }) {
               <span style={{ display: 'block', fontSize: 18, fontWeight: 700 }}>{m?.name}</span>
               <span className="t-sub" style={{ display: 'block', fontSize: 14.5 }}>{scheduleLine(elder, r)}</span>
               <span className="t-sub" style={{ display: 'block', fontSize: 13.5 }}>{durationText(r.duration)}</span>
+              {r.stock != null && r.status === 'active' && (
+                <span style={{ display: 'block', fontSize: 14.5, fontWeight: 700, marginTop: 2, color: isLow(r) ? '#8A4B00' : '#17633F' }}>
+                  {isLow(r) ? 'কিনতে হবে · ' : ''}{stockText(r)}
+                </span>
+              )}
             </span>
             <span className="pill" style={{ fontSize: 13, ...(r.status === 'pending' ? PILL_COLOURS.warn : PILL_COLOURS.ok) }}>
               {r.status === 'pending' ? 'যাচাই বাকি' : 'চালু'}
@@ -229,6 +235,8 @@ function Medicines({ elder, onOpen, onAdd }) {
 }
 
 function MedicineView({ elder, regimenId, onBack }) {
+  const { dispatch } = useStore();
+  const me = useCaregiver();
   const meds = useMeds();
   const r = elder.regimens.find((x) => x.id === regimenId);
   if (!r) return null;
@@ -243,6 +251,21 @@ function MedicineView({ elder, regimenId, onBack }) {
         <span className="pill" style={r.status === 'pending' ? PILL_COLOURS.warn : PILL_COLOURS.ok}>{r.status === 'pending' ? 'যাচাই বাকি' : 'চালু'}</span>
       </div>
       <div className="body">
+        {r.stock != null && (
+          <div className="card" style={{ gap: 8, background: isLow(r) ? '#FCEBC8' : undefined }}>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#425A80' }}>ঘরে কতটি আছে</div>
+            <div style={{ fontSize: 22, fontWeight: 700, color: isLow(r) ? '#8A4B00' : '#0B2F8A' }}>{stockText(r)}</div>
+            <div className="t-sub" style={{ fontSize: 14.5 }}>{bn(r.refillDays ?? 5)} দিনের ওষুধ বাকি থাকলে ছোটু জানাবে। প্রতিটি ডোজ খাওয়ার পর হিসাব কমে।</div>
+            <div className="row" style={{ gap: 8 }}>
+              {[10, 30].map((n) => (
+                <button key={n} type="button" className="btn-wide" style={{ minHeight: 48, fontSize: 17 }}
+                  onClick={() => dispatch({ type: 'stock/add', elderId: elder.id, regimenId: r.id, count: n, by: me.id, medName: m?.short })}>
+                  <Icon name="plus" size={20} /> {bn(n)}টি কিনেছি
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <RegimenSummary elder={elder} regimen={r} med={m} image={medImage(r, m)} />
       </div>
     </div>

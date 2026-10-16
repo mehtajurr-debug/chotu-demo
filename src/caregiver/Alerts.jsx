@@ -7,7 +7,8 @@ import { medImage } from '../lib/schedule.js';
 import { Avatar, MedThumb } from '../components/Phone.jsx';
 import { ScreenHeader } from '../components/ui.jsx';
 import Icon from '../components/Icon.jsx';
-import { alertLabel } from './status.js';
+import { CALM_ALERTS, alertLabel } from './status.js';
+import { stockText } from '../lib/stock.js';
 
 /** Alerts this caregiver has been told about (not yet closed come first). */
 export function myAlerts(state, meId) {
@@ -25,7 +26,7 @@ export function AlertBanner({ alert, onOpen }) {
   const { state } = useStore();
   const elder = state.elders.find((e) => e.id === alert.elderId);
   return (
-    <button type="button" className={'banner' + (alert.kind === 'missed' ? '' : ' red')} onClick={onOpen}>
+    <button type="button" className={'banner' + (CALM_ALERTS.has(alert.kind) ? '' : ' red')} onClick={onOpen}>
       <Avatar person={elder} size={44} />
       <span style={{ flex: 1, textAlign: 'left' }}>
         <b style={{ display: 'block', fontSize: 16 }}>ছোটু · {elder.name}</b>
@@ -79,7 +80,7 @@ export function AlertDetail({ id, onBack, toast }) {
   const nameOf = (cid) => state.caregivers.find((c) => c.id === cid)?.name;
   const told = recipients(state, a);
   const mine = a.handledBy === me.id;
-  const red = !a.handledBy && !a.resolvedAt;
+  const red = !a.handledBy && !a.resolvedAt && !CALM_ALERTS.has(a.kind);
 
   // The medicines this alert is about (dose keys look like "regimenId@day@slot").
   const items = a.doseKeys.map((k) => {
@@ -114,7 +115,10 @@ export function AlertDetail({ id, onBack, toast }) {
             {items.map(({ key, r, med }) => (
               <div key={key} className="row" style={{ gap: 10 }}>
                 <MedThumb src={medImage(r, med)} alt="" size={48} />
-                <div style={{ fontSize: 17, fontWeight: 700 }}>{med.short}</div>
+                <div>
+                  <div style={{ fontSize: 17, fontWeight: 700 }}>{med.short}</div>
+                  {a.kind === 'refill' && <div className="t-sub" style={{ fontSize: 15 }}>{stockText(r) || 'হিসাব রাখা হয়নি'}</div>}
+                </div>
               </div>
             ))}
           </div>
@@ -122,7 +126,7 @@ export function AlertDetail({ id, onBack, toast }) {
 
         <div className="card" style={{ gap: 8 }}>
           <div style={{ fontSize: 15, fontWeight: 700, color: '#425A80' }}>কাকে জানানো হয়েছে</div>
-          {!a.ladder && <div style={{ fontSize: 16 }}>সবাইকে একসঙ্গে জানানো হয়েছে ({told.map(nameOf).join(', ')})</div>}
+          {!a.ladder && <div style={{ fontSize: 16 }}>{told.length > 1 ? `সবাইকে একসঙ্গে জানানো হয়েছে (${told.map(nameOf).join(', ')})` : `জানানো হয়েছে: ${nameOf(told[0])}`}</div>}
           {a.ladder && ladder.map(({ cid, at, done }) => (
             <div key={cid} className="row" style={{ gap: 8, fontSize: 16 }}>
               <Icon name={done ? 'check' : 'clock'} size={18} color={done ? '#17633F' : '#425A80'} />
@@ -141,7 +145,12 @@ export function AlertDetail({ id, onBack, toast }) {
       </div>
 
       <div className="foot">
-        {!a.handledBy && !a.resolvedAt && (
+        {a.kind === 'refill' && !a.resolvedAt && items.map(({ key, r, med }) => (
+          <button key={key} type="button" className="btn-wide green" onClick={() => { dispatch({ type: 'stock/add', elderId: elder.id, regimenId: r.id, count: 30, by: me.id, medName: med.short }); toast(`${med.short}: ৩০টি যোগ হলো`); onBack(); }}>
+            <Icon name="plus" size={22} /> কিনেছি, ৩০টি যোগ করুন
+          </button>
+        ))}
+        {!a.handledBy && !a.resolvedAt && a.kind !== 'refill' && (
           <button type="button" className="btn-wide green" onClick={() => { dispatch({ type: 'alert/handle', id: a.id, by: me.id }); toast('অন্যদের জানানো হলো: আপনি দেখছেন'); }}>
             <Icon name="check" size={22} /> আমি দেখছি
           </button>
