@@ -5,35 +5,38 @@
 // Request:  POST { audio: <base64 WAV>, mimeType: 'audio/wav', context: 'reminder' | 'readback' | 'undo' }
 // Response: { intent, confidence, transcript }  — understanding is classification, not word-for-word transcription.
 
-const API = 'https://generativelanguage.googleapis.com/v1beta';
-const MODEL_TIMEOUT_MS = 6000; // per model
-const TOTAL_BUDGET_MS = 12000; // give up after this, so Chotu can ask again instead of hanging
+import { askJSON } from './_gemini.js';
 
 export const INTENTS = ['took', 'not_yet', 'forgot', 'help', 'pain', 'emergency', 'cancel', 'yes', 'no', 'good', 'unwell', 'other'];
 
 const PROMPT = `You classify one short spoken reply from an older adult in Bangladesh to a medicine reminder app called Chotu.
-The speech is Bangla (any regional dialect) and may be mixed with English words.
+The speech is Bangla (standard or any regional dialect: Dhaka, Chittagong, Sylhet, Barishal, Noakhali, Rajshahi, Khulna)
+and may be mixed with English words. Older speakers may talk softly, slowly, with pauses, filler sounds (হুঁ, এ্যা, ওই যে),
+missing teeth, or a TV or other people in the background. Listen for the elder's main answer and ignore the rest.
 
 What Chotu just asked: {CONTEXT}
 
 Pick exactly one intent:
-- took: they say they have taken the medicine (e.g. খেয়েছি, খাইছি, খাইলাম, হ খাইছি, নিয়েছি, হয়ে গেছে)
-- not_yet: not taken yet / will take later (e.g. এখনও খাইনি, পরে খাব, খাই নাই, একটু পরে)
-- forgot: they don't remember whether they took it (e.g. মনে নেই, মনে নাই, ঠিক মনে পড়ছে না)
-- help: they ask for help or for family (e.g. সাহায্য চাই, আমাকে একটু সাহায্য করুন, ছেলেকে ডাকো)
-- pain: they mention pain or feeling unwell, without asking for urgent help
-- emergency: urgent alarm words (e.g. জরুরি, বাঁচাও, বাঁচান, সাহায্য করুন!! shouted)
-- cancel: they cancel something (e.g. বাতিল, থামো)
-- good: they feel well (e.g. ভালো আছি, আলহামদুলিল্লাহ ভালো, ঠিক আছি)
-- unwell: they feel unwell or weak, without naming pain (e.g. শরীরটা ভালো না, দুর্বল লাগছে, মাথা ঘুরছে)
-- yes: a plain yes (হ্যাঁ, হ, জি, ঠিক আছে)
-- no: a plain no or a correction (না, না না, ভুল হয়েছে)
-- other: anything else, silence, noise, or unclear speech
+- took: they say they have taken the medicine. Any past form of খাওয়া / নেওয়া counts, in any dialect
+  (e.g. খেয়েছি, খাইছি, খাইসি, খাইলাম, খাইয়া ফেলছি, খাই ফালাইছি, হ খাইছি, জি খেয়েছি, নিয়েছি, নিছি, হয়ে গেছে, হইছে, খাওয়া শেষ, taken, done)
+- not_yet: not taken yet / will take later (e.g. এখনও খাইনি, খাই নাই, খাইনাই, না খাই নাই, পরে খাব, পরে খামু, একটু পরে, এখন খাব, খাচ্ছি)
+- forgot: they don't remember whether they took it (e.g. মনে নেই, মনে নাই, মনে পড়ে না, ঠিক মনে পড়ছে না, খেয়েছি কিনা জানি না, ভুলে গেছি)
+- help: they ask for help or for family (e.g. সাহায্য চাই, আমাকে একটু সাহায্য করুন, ছেলেকে ডাকো, মেয়েকে ফোন দাও, কেউ আসো)
+- pain: they mention pain, without asking for urgent help (e.g. ব্যথা, ব্যাথা করে, কোমরে ব্যথা)
+- emergency: urgent alarm words (e.g. জরুরি, বাঁচাও, বাঁচান, সাহায্য করুন!! shouted, আমি পড়ে গেছি)
+- cancel: they cancel something (e.g. বাতিল, থামো, লাগবে না, ভুল করে চাপছি)
+- good: they feel well (e.g. ভালো আছি, আলহামদুলিল্লাহ ভালো, ঠিক আছি, ভালাই আছি)
+- unwell: they feel unwell or weak, without naming pain (e.g. শরীরটা ভালো না, দুর্বল লাগছে, মাথা ঘুরছে, জ্বর জ্বর লাগে)
+- yes: a plain yes (হ্যাঁ, হ, হুম, জি, জি হ্যাঁ, ঠিক আছে, আচ্ছা, yes)
+- no: a plain no or a correction (না, না না, নাহ, ভুল হয়েছে, no)
+- other: anything else, silence, noise, or speech you truly cannot make out
 
 Rules:
-- Context matters. After "Did you take it?", a plain yes means took. During the 5-second undo window, any "no" means no.
-- confidence is 0 to 1. Use below 0.6 when the audio is unclear, partly heard, or the meaning is ambiguous.
-- transcript is your best Bangla transcription of what they said (short). Empty if nothing was said.
+- Context matters. After "Did you take it?", a plain yes (হ্যাঁ, হ, জি, হুম) means took and a plain no means not_yet.
+- Judge the meaning, not perfect words: a half-heard "...খাইছি" or "হ... খাইলাম" is still took.
+- confidence is 0 to 1. Use 0.8 or more when the meaning is clear even if the words are informal or dialect.
+  Use below 0.6 only when the audio is really unclear, partly heard, or the meaning is ambiguous.
+- transcript is your best Bangla transcription of what they said (short), in Bangla script. Empty if nothing was said.
 - Never give medical advice. Only classify.`;
 
 const CONTEXTS = {
@@ -57,85 +60,24 @@ const SCHEMA = {
   required: ['intent', 'confidence', 'transcript'],
 };
 
-let candidates = null; // models to try, best first
-let lastGood = null; // the model that answered last time
-
-/** GEMINI_MODEL if set; otherwise the Flash models this key can use, newest first, with a lighter one as backup. */
-async function modelsToTry(key) {
-  if (process.env.GEMINI_MODEL) return [process.env.GEMINI_MODEL];
-  if (!candidates) {
-    const r = await fetch(`${API}/models?pageSize=200`, { headers: { 'x-goog-api-key': key } });
-    if (!r.ok) throw new Error(`Could not list models (HTTP ${r.status}). Is the API key right?`);
-    const { models = [] } = await r.json();
-    const names = models
-      .filter((m) => (m.supportedGenerationMethods || []).includes('generateContent'))
-      .map((m) => m.name.replace('models/', ''))
-      .filter((n) => /^gemini-\d/.test(n) && n.includes('flash') && !/(tts|image|live|audio|embed|exp|preview|thinking)/.test(n));
-    const ver = (n) => parseFloat(n.match(/gemini-(\d+(\.\d+)?)/)[1]);
-    const full = names.filter((n) => !n.includes('lite')).sort((a, b) => ver(b) - ver(a));
-    const lite = names.filter((n) => n.includes('lite')).sort((a, b) => ver(b) - ver(a));
-    // The light model was the fastest and just as accurate in our tests, so try it first.
-    candidates = [...lite.slice(0, 1), ...full.slice(0, 2)];
-    if (!candidates.length) throw new Error('No Gemini Flash model is available for this key.');
-  }
-  return lastGood ? [lastGood, ...candidates.filter((m) => m !== lastGood)] : candidates;
-}
-
-export async function understand(input, key) {
-  let lastErr = null;
-  const started = Date.now();
-  for (const model of await modelsToTry(key)) {
-    if (Date.now() - started > TOTAL_BUDGET_MS - MODEL_TIMEOUT_MS + 1000) break; // not enough time left for another try
-    try {
-      const out = await askModel(model, input, key);
-      lastGood = model;
-      return out;
-    } catch (e) {
-      lastErr = e;
-      if (!e.busy) throw e; // a real error (bad key, bad audio): trying other models won't help
-    }
-  }
-  throw lastErr || new Error("Gemini is busy right now");
-}
-
-async function askModel(model, { audio, mimeType = 'audio/wav', context = 'reminder' }, key) {
-  const body = {
-    contents: [{
-      role: 'user',
-      parts: [
-        { text: PROMPT.replace('{CONTEXT}', CONTEXTS[context] || CONTEXTS.reminder) },
-        { inline_data: { mime_type: mimeType, data: audio } },
-      ],
-    }],
-    generationConfig: { responseMimeType: 'application/json', responseSchema: SCHEMA, temperature: 0 },
-  };
-  let r;
-  try {
-    r = await fetch(`${API}/models/${model}:generateContent`, {
-      method: 'POST',
-      headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-      signal: AbortSignal.timeout(MODEL_TIMEOUT_MS), // a slow model is as bad as a busy one in a live demo
-    });
-  } catch (e) {
-    const err = new Error(`Gemini ${model} did not answer in time`);
-    err.busy = true;
-    throw err;
-  }
-  if (!r.ok) {
-    const detail = (await r.text()).slice(0, 200);
-    const err = new Error(`Gemini ${model} HTTP ${r.status}: ${detail}`);
-    err.busy = [429, 500, 503, 504].includes(r.status) || r.status === 404; // busy or not offered: try the next model
-    throw err;
-  }
-  const data = await r.json();
-  const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
-  const out = JSON.parse(text);
+/** Asks a light Flash model; if it is slow a second joins and the first answer wins, so one busy model doesn't stall Chotu. */
+export async function understand({ audio, mimeType = 'audio/wav', context = 'reminder' }, key) {
+  const out = await askJSON(key, {
+    parts: [
+      { text: PROMPT.replace('{CONTEXT}', CONTEXTS[context] || CONTEXTS.reminder) },
+      { inline_data: { mime_type: mimeType, data: audio } },
+    ],
+    schema: SCHEMA,
+    prefer: 'lite', // the light model was the fastest and just as accurate for these short answers in our tests
+    parallel: 2,
+    staggerMs: 2500, // a second model joins only if the first is slow (saves the free daily allowance)
+    budgetMs: 11000, // after this Chotu asks again instead of hanging
+  });
   return {
     intent: INTENTS.includes(out.intent) ? out.intent : 'other',
     confidence: Math.max(0, Math.min(1, Number(out.confidence) || 0)),
     transcript: String(out.transcript || '').slice(0, 200),
-    model,
+    model: out.model,
   };
 }
 

@@ -31,7 +31,7 @@ const gone = new Set(); // models Google says are no longer offered (HTTP 404): 
  * the next model on the list starts, until the time budget runs out. `prefer: 'full'` puts the bigger Flash models
  * first (better at writing); `'lite'` puts the light ones first (faster, and usually less busy).
  */
-export async function askJSON(key, { parts, schema, prefer = 'full', parallel = 3, budgetMs = 27000, temperature = 0 }) {
+export async function askJSON(key, { parts, schema, prefer = 'full', parallel = 3, staggerMs = 0, budgetMs = 27000, temperature = 0 }) {
   const { full, lite } = await listFlash(key);
   const order = (process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL]
     : prefer === 'full' ? [...full, ...lite] : [...lite, ...full]).filter((m) => !gone.has(m));
@@ -74,10 +74,15 @@ export async function askJSON(key, { parts, schema, prefer = 'full', parallel = 
     let next = 0;
     let running = 0;
     let done = false;
+    // With staggerMs, only one model is asked at first; the others join if it hasn't answered by then.
+    // Saves the free-tier daily allowance when Gemini is quick, and still races when it is slow.
+    let limit = staggerMs ? 1 : parallel;
     const errors = [];
-    const finish = (fn, v) => { if (!done) { done = true; stop.abort(); fn(v); } };
+    let timer = null;
+    const finish = (fn, v) => { if (!done) { done = true; clearTimeout(timer); stop.abort(); fn(v); } };
+    if (staggerMs) timer = setTimeout(() => { limit = parallel; launch(); }, staggerMs);
     const launch = () => {
-      while (!done && running < parallel && next < order.length && !deadline.aborted) {
+      while (!done && running < limit && next < order.length && !deadline.aborted) {
         const model = order[next++];
         running += 1;
         ask(model).then((out) => finish(resolve, out), (e) => {
@@ -86,7 +91,7 @@ export async function askJSON(key, { parts, schema, prefer = 'full', parallel = 
           if (!e.retry) return finish(reject, e); // e.g. a wrong API key: other models won't help
           launch();
           if (!running) {
-            const busy = errors.filter((x) => /HTTP (429|5dd)|did not answer/.test(x.message)).length;
+            const busy = errors.filter((x) => /HTTP (429|5\d\d)|did not answer/.test(x.message)).length;
             finish(reject, new Error(busy ? 'Gemini is very busy right now. Please try again in a minute.' : String(errors.at(-1)?.message || 'Gemini is busy right now')));
           }
         });

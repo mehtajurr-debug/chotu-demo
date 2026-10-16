@@ -15,7 +15,8 @@ export async function enableMic() {
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 },
     });
   }
-  if (!ctx) ctx = new AudioContext();
+  // Record at 16 kHz directly: the browser's own resampling is cleaner than ours. Older browsers fall back.
+  if (!ctx) { try { ctx = new AudioContext({ sampleRate: TARGET_RATE }); } catch { ctx = new AudioContext(); } }
   if (ctx.state === 'suspended') await ctx.resume();
 }
 
@@ -29,15 +30,20 @@ export const micReady = () => Boolean(stream);
 /**
  * Record until the speaker pauses. Resolves { wav: base64 | null, spoke: boolean }.
  * `signal.aborted` stops early (e.g. the presenter used a chip instead).
+ * "Speaking" is judged against the room's own background noise (measured in the first moments), not a fixed
+ * loudness, so soft voices and a phone held further away still count. The pause allowed mid-answer is generous,
+ * because older speakers often stop and think ("হ্যাঁ… খেয়েছি").
  */
-export function recordAnswer({ maxMs = 8000, silenceMs = 1300, startTimeoutMs = 6000, threshold = 0.025, onLevel, signal } = {}) {
+export function recordAnswer({ maxMs = 9000, silenceMs = 1900, startTimeoutMs = 6000, minThreshold = 0.006, onLevel, signal } = {}) {
   return new Promise((resolve) => {
     const source = ctx.createMediaStreamSource(stream);
-    const proc = ctx.createScriptProcessor(4096, 1, 1);
+    const proc = ctx.createScriptProcessor(ctx.sampleRate > 24000 ? 2048 : 1024, 1, 1); // ~40-60 ms steps
     const chunks = [];
     const t0 = performance.now();
     let spokeAt = null;
     let lastLoud = null;
+    let loudRun = 0; // consecutive loud steps: one click or bump is not speech
+    let noise = null; // background level, learned while nobody speaks
     let done = false;
 
     const finish = () => {
@@ -58,7 +64,16 @@ export function recordAnswer({ maxMs = 8000, silenceMs = 1300, startTimeoutMs = 
       const rms = Math.sqrt(sum / data.length);
       onLevel?.(rms);
       const now = performance.now();
-      if (rms > threshold) { lastLoud = now; if (!spokeAt) spokeAt = now; }
+      if (noise == null) noise = Math.min(rms, 0.008); // the first moment may already be speech: don't trust it fully
+      const threshold = Math.min(0.025, Math.max(minThreshold, noise * 2.5)); // never stricter than the old fixed level
+      if (rms > threshold) {
+        loudRun += 1;
+        lastLoud = now;
+        if (!spokeAt && loudRun >= 2) spokeAt = now;
+      } else {
+        loudRun = 0;
+        if (!spokeAt) noise = noise * 0.9 + rms * 0.1; // keep learning the room while waiting
+      }
       if (signal?.aborted) return finish();
       if (!spokeAt && now - t0 > startTimeoutMs) return finish(); // nobody spoke
       if (spokeAt && now - lastLoud > silenceMs) return finish(); // they paused: answer over
@@ -111,7 +126,12 @@ function toWavBase64(chunks, rate) {
   let off = 0;
   for (const c of chunks) { all.set(c, off); off += c.length; }
 
-  // Downsample to 16 kHz by averaging.
+  // Make quiet recordings louder (up to 8x) so Gemini hears soft voices clearly.
+  let peak = 0;
+  for (let i = 0; i < all.length; i++) peak = Math.max(peak, Math.abs(all[i]));
+  const gain = peak > 0 ? Math.min(8, 0.9 / peak) : 1;
+
+  // Downsample to 16 kHz by averaging (does nothing when the browser already recorded at 16 kHz).
   const ratio = rate / TARGET_RATE;
   const outLen = Math.floor(all.length / ratio);
   const pcm = new Int16Array(outLen);
@@ -119,7 +139,7 @@ function toWavBase64(chunks, rate) {
     const start = Math.floor(i * ratio), end = Math.min(all.length, Math.floor((i + 1) * ratio));
     let s = 0;
     for (let j = start; j < end; j++) s += all[j];
-    const v = Math.max(-1, Math.min(1, s / Math.max(1, end - start)));
+    const v = Math.max(-1, Math.min(1, (gain * s) / Math.max(1, end - start)));
     pcm[i] = v < 0 ? v * 0x8000 : v * 0x7fff;
   }
 
