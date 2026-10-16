@@ -57,7 +57,7 @@ export default async function handler(req, res) {
   if (!image || image.length > 4_000_000) return res.status(400).json({ error: 'Missing or too-large image.' });
   try {
     const out = await askJSON(key, {
-      prefer: 'lite', perModelMs: 15000, // the light model read all 18 sample lines correctly in ~4 s; big ones were often overloaded
+      prefer: 'lite', // light models read all 18 sample lines correctly and are less often overloaded
       parts: [{ text: PROMPT }, { inline_data: { mime_type: mimeType, data: image } }],
       schema: SCHEMA,
     });

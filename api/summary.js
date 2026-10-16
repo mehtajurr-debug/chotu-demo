@@ -76,7 +76,7 @@ export default async function handler(req, res) {
   if (!facts || JSON.stringify(facts).length > 60_000) return res.status(400).json({ error: 'Missing or too-large facts.' });
   try {
     const out = await askJSON(key, {
-      prefer: 'lite', perModelMs: 15000, temperature: 0.3,
+      prefer: 'lite', temperature: 0.3,
       parts: [{ text: PROMPT.replace('{PERIOD}', PERIOD[period] || PERIOD.today) + JSON.stringify(facts) }],
       schema: SCHEMA,
     });

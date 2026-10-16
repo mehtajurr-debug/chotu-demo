@@ -23,43 +23,78 @@ async function listFlash(key) {
   return flashModels;
 }
 
+const gone = new Set(); // models Google says are no longer offered (HTTP 404): never asked again
+
 /**
- * Ask for JSON. `prefer: 'full'` tries the bigger Flash model first (better at reading images and writing),
- * then the light one; busy or slow models are skipped until the time budget runs out.
+ * Ask for JSON. When Gemini is overloaded some models answer "busy" and others are slow, so this asks up to
+ * `parallel` models AT THE SAME TIME and keeps the first good answer (the others are cancelled). When one fails,
+ * the next model on the list starts, until the time budget runs out. `prefer: 'full'` puts the bigger Flash models
+ * first (better at writing); `'lite'` puts the light ones first (faster, and usually less busy).
  */
-export async function askJSON(key, { parts, schema, prefer = 'full', perModelMs = 20000, budgetMs = 27000, temperature = 0 }) {
+export async function askJSON(key, { parts, schema, prefer = 'full', parallel = 3, budgetMs = 27000, temperature = 0 }) {
   const { full, lite } = await listFlash(key);
-  const order = process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL]
-    : prefer === 'full' ? [...full.slice(0, 2), ...lite.slice(0, 1)] : [...lite.slice(0, 1), ...full.slice(0, 2)];
-  const started = Date.now();
-  let lastErr = null;
-  for (const model of order) {
-    const left = budgetMs - (Date.now() - started);
-    if (left < 4000) break;
+  const order = (process.env.GEMINI_MODEL ? [process.env.GEMINI_MODEL]
+    : prefer === 'full' ? [...full, ...lite] : [...lite, ...full]).filter((m) => !gone.has(m));
+  const stop = new AbortController();
+  const deadline = AbortSignal.timeout(budgetMs);
+  const body = JSON.stringify({
+    contents: [{ role: 'user', parts }],
+    generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature },
+  });
+
+  async function ask(model) {
     try {
       const r = await fetch(`${API}/models/${model}:generateContent`, {
         method: 'POST',
         headers: { 'x-goog-api-key': key, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts }],
-          generationConfig: { responseMimeType: 'application/json', responseSchema: schema, temperature },
-        }),
-        signal: AbortSignal.timeout(Math.min(perModelMs, left)),
+        body,
+        signal: AbortSignal.any([stop.signal, deadline]),
       });
       if (!r.ok) {
-        lastErr = new Error(`Gemini ${model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
-        if ([429, 500, 503, 504, 404].includes(r.status)) continue; // busy or not offered: try the next model
-        throw lastErr;
+        if (r.status === 404) gone.add(model);
+        const err = new Error(`Gemini ${model} HTTP ${r.status}: ${(await r.text()).slice(0, 200)}`);
+        err.retry = [429, 500, 503, 504, 404].includes(r.status); // busy or not offered: another model may work
+        throw err;
       }
       const data = await r.json();
       const text = data.candidates?.[0]?.content?.parts?.map((p) => p.text || '').join('') || '{}';
       return { ...JSON.parse(text), model };
     } catch (e) {
-      if (e.name === 'TimeoutError' || e.name === 'AbortError') { lastErr = new Error(`Gemini ${model} did not answer in time`); continue; }
+      if (e.name === 'TimeoutError' || e.name === 'AbortError') {
+        const err = new Error(`Gemini ${model} did not answer in time`);
+        err.retry = true;
+        throw err;
+      }
+      if (e.retry === undefined) e.retry = true; // network hiccup or bad JSON: try another model
       throw e;
     }
   }
-  throw lastErr || new Error('Gemini is busy right now');
+
+  return new Promise((resolve, reject) => {
+    let next = 0;
+    let running = 0;
+    let done = false;
+    const errors = [];
+    const finish = (fn, v) => { if (!done) { done = true; stop.abort(); fn(v); } };
+    const launch = () => {
+      while (!done && running < parallel && next < order.length && !deadline.aborted) {
+        const model = order[next++];
+        running += 1;
+        ask(model).then((out) => finish(resolve, out), (e) => {
+          running -= 1;
+          errors.push(e);
+          if (!e.retry) return finish(reject, e); // e.g. a wrong API key: other models won't help
+          launch();
+          if (!running) {
+            const busy = errors.filter((x) => /HTTP (429|5dd)|did not answer/.test(x.message)).length;
+            finish(reject, new Error(busy ? 'Gemini is very busy right now. Please try again in a minute.' : String(errors.at(-1)?.message || 'Gemini is busy right now')));
+          }
+        });
+      }
+    };
+    if (!order.length) return reject(new Error('No Gemini Flash model is available for this key.'));
+    launch();
+  });
 }
 
 /** Shared bits of the Vercel-style handlers. */
