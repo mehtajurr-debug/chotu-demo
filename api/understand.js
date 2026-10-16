@@ -73,13 +73,29 @@ export async function understand({ audio, mimeType = 'audio/wav', context = 'rem
     staggerMs: 2500, // a second model joins only if the first is slow (saves the free daily allowance)
     budgetMs: 11000, // after this Chotu asks again instead of hanging
   });
-  return {
+  const result = {
     intent: INTENTS.includes(out.intent) ? out.intent : 'other',
     confidence: Math.max(0, Math.min(1, Number(out.confidence) || 0)),
     transcript: String(out.transcript || '').slice(0, 200),
     model: out.model,
   };
+  // Safety net: sometimes the words are heard right ("হু খাইছি তো") but the model still says "other".
+  // Then simple word rules decide, with low confidence, so Chotu reads it back before logging anything.
+  if (result.intent === 'other' && context === 'reminder') {
+    const said = result.transcript.normalize('NFC');
+    const guess = WORD_RULES.find(([, re]) => re.test(said));
+    if (guess) Object.assign(result, { intent: guess[0], confidence: 0.55, byRule: true });
+  }
+  return result;
 }
+
+// Checked in this order: "not yet" words also contain খাই, so they come before "took".
+// Both sides are NFC-normalised, because Bangla letters like য় can be typed two ways.
+export const WORD_RULES = [
+  ['forgot', 'মনে (নেই|নাই|পড়ে না|পড়ছে না|পড়তেছে না)|ভুলে গেছি|জানি না'],
+  ['not_yet', 'খাই ?নি|খাই ?না|খাব|খামু|খাবো|পরে|এখনও না|এখনো না'],
+  ['took', 'খেয়েছি|খাইছি|খাইসি|খাইলাম|খাইয়া|খাই ফা|নিয়েছি|নিছি|হইছে|হয়ে গেছে|খাওয়া শেষ'],
+].map(([intent, src]) => [intent, new RegExp(src.normalize('NFC'))]);
 
 /** Vercel-style handler: (req, res). req.body is the parsed JSON. */
 export default async function handler(req, res) {
