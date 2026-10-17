@@ -56,7 +56,7 @@ export default function App() {
   const [view, setViewRaw] = useState(() => store.get('chotu-view', 'both')); // elder | care | both
   const shown = narrow && view === 'both' ? 'elder' : view; // a narrow screen fits one phone
   const [drawerOpen, setDrawerOpen] = useState(false);
-  const [tutorial, setTutorial] = useState(() => store.get('chotu-tutorial-seen', '') !== '1');
+  const [tutorial, setTutorial] = useState(() => store.get('chotu-tutorial-seen-v2', '') !== '1');
   const [elderPhase, setElderPhase] = useState('idle');
   const [micOn, setMicOn] = useState(false); // live microphone, switched on in Demo settings
   const [lastHeard, setLastHeard] = useState(null); // what the server understood last time
@@ -65,7 +65,7 @@ export default function App() {
   useFitScale(shown, drawerOpen, coach && !drawerOpen ? coachH + 8 : 0);
 
   const setView = (v) => { setViewRaw(v); store.set('chotu-view', v); };
-  const closeTutorial = () => { setTutorial(false); store.set('chotu-tutorial-seen', '1'); };
+  const closeTutorial = () => { setTutorial(false); store.set('chotu-tutorial-seen-v2', '1'); };
   const { dispatch } = useStore();
   // Start a rehearsal workflow: set up the moment it starts from, show the right phone(s), show the guide card.
   const startTour = (w) => {
